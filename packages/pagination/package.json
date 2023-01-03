@@ -1,0 +1,42 @@
+{
+    "name": "@falloutstudios/djs-pagination",
+    "description": "Discord.js v14 button and reaction pagination",
+    "main": "./dist/cjs/index.js",
+    "types": "./dist/types/index.d.ts",
+    "module": "./dist/mjs/index.js",
+    "type": "commonjs",
+    "license": "GPL-3.0",
+    "version": "1.2.1",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/lib/esm.mjs",
+            "require": "./dist/lib/index.js"
+        }
+    },
+    "engines": {
+        "node": ">=16.9.0"
+    },
+    "keywords": [
+        "djs",
+        "discord.js",
+        "pagination",
+        "reaction",
+        "button"
+    ],
+    "scripts": {
+        "build": "npx tsc"
+    },
+    "files": [
+        "dist",
+        "LICENSE",
+        "README.md"
+    ],
+    "devDependencies": {
+        "@types/node": "*",
+        "discord.js": "*"
+    },
+    "peerDependencies": {
+        "discord.js": "*"
+    }
+}
