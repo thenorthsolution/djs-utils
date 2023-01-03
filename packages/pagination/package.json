@@ -3,7 +3,7 @@
     "description": "Discord.js v14 button and reaction pagination",
     "main": "./dist/cjs/index.js",
     "types": "./dist/types/index.d.ts",
-    "module": "./dist/mjs/index.js",
+    "module": "./dist/mjs/esm.mjs",
     "type": "commonjs",
     "license": "GPL-3.0",
     "version": "1.2.3",
