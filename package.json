@@ -8,11 +8,12 @@
         "publish": "npm run build && npx lerna exec npm publish"
     },
     "dependencies": {
-        "fallout-utility": "^2.1.2"
+        "@falloutstudios/djs-pagination": "file:packages/pagination",
+        "@falloutstudios/djs-scam-links": "file:packages/scam-links"
     },
     "devDependencies": {
-        "@types/node": "^18.11.18",
-        "discord.js": "^14.7.1",
+        "@types/node": "*",
+        "discord.js": "*",
         "lerna": "^6.3.0",
         "rimraf": "^3.0.2",
         "typescript": "^4.9.4"

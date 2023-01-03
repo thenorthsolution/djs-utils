@@ -32,12 +32,8 @@
         "LICENSE",
         "README.md"
     ],
-    "devDependencies": {
-        "@types/node": "*",
-        "discord.js": "*"
-    },
     "peerDependencies": {
-        "discord.js": "*"
+        "discord.js": "^14.7.0"
     },
     "publishConfig": {
         "access": "public"
