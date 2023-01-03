@@ -2,10 +2,17 @@
     "name": "djs",
     "private": true,
     "description": "A monorepo of discord.js utility packages",
-    "scripts": {},
+    "scripts": {
+        "clean": "npx rimraf ./packages/bin ./packages/dist",
+        "build": "npm run clean && npx lerna run build && npm i"
+    },
+    "dependencies": {
+        "fallout-utility": "^2.1.2"
+    },
     "devDependencies": {
         "@types/node": "^18.11.18",
         "lerna": "^6.3.0",
+        "rimraf": "^3.0.2",
         "typescript": "^4.9.4"
     },
     "workspaces": [
