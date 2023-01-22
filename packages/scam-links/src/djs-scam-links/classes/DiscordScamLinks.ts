@@ -137,7 +137,9 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
      * @param data String data
      */
     public getMatch(data: string): string|null {
-        return this.allDomains.find(domain => data.includes(domain.toLowerCase())) ?? null;
+        const tokens = data.toLowerCase().split(/\s+/);
+
+        return this.allDomains.find(domain => tokens.some(t => t === domain || (t.startsWith('http') && t.includes(domain)))) ?? null;
     }
 
     /**
