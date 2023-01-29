@@ -1,5 +1,5 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
-import { Awaitable, If, RestOrArray, normalizeArray } from 'fallout-utility';
+import { Awaitable, If, RestOrArray, normalizeArray, replaceAll } from 'fallout-utility';
 import { Collection } from '@discordjs/collection';
 import { UrlJsonContent, UrlJsonContentOptions } from './UrlJsonContent';
 
@@ -21,6 +21,8 @@ export interface DiscordScamLinksOptions {
 export interface DiscordScamLinksEvents {
     error: (error: Error) => Awaitable<void>;
     cacheRefresh: () => Awaitable<void>;
+    cacheFetch: (cached: UrlJsonContent<any, true>) => Awaitable<void>;
+    cacheAdd: (cached: UrlJsonContent<any>) => Awaitable<void>;
 }
 
 export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmitter<DiscordScamLinksEvents> {
@@ -35,7 +37,11 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
 
     get cache() { return this._cache as Collection<string, If<Ready, UrlJsonContent<any, true>, UrlJsonContent>>; }
     get maxCacheAge() { return this._options?.maxCacheAgeMs ?? this._maxCacheAge; }
-    get allDomains() { return [...this.addedDomains, ...this.cache.filter(cached => cached.isFetched()).map(cached => cached.content!).reduce((prev, current) => [...prev, ...current])] }
+    get allDomains() {
+        const cachedDomains = this.cache.filter(cached => cached.isFetched()).map(cached => cached.content!);
+
+        return [...this.addedDomains, ...(cachedDomains.length ? cachedDomains.reduce((prev, current) => [...prev, ...current]) : [])];
+    }
 
     constructor(options: Partial<DiscordScamLinksOptions> = {
         fetchJsonFromUrl: [
@@ -85,7 +91,10 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
         const data = new UrlJsonContent(url, options);
 
         await data.fetch();
-        if (!options?.dontCache) this.cache.set(url, data as any);
+        if (!options?.dontCache) {
+            this.cache.set(url, data as any);
+            this.emit('cacheAdd', data);
+        }
 
         return data;
     }
@@ -133,13 +142,26 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
     }
 
     /**
-     * Get the matched domain if anything matches from a string
+     * Get the matched domains if anything matches from a string
      * @param data String data
      */
     public getMatch(data: string): string|null {
+        return this.getMatches(data)[0] ?? null;
+    }
+
+    /**
+     * Get the matched domains if anything matches from a string
+     * @param data String data
+     */
+    public getMatches(data: string): string[] {
         const tokens = data.toLowerCase().split(/\s+/);
 
-        return this.allDomains.find(domain => tokens.some(t => t === domain || (t.startsWith('http') && t.includes(domain)))) ?? null;
+        return this.allDomains.filter(domain => tokens.some(t => {
+            t = replaceAll(t, ['http://', 'https://'], ['', '']);
+            const i = t.split('/');
+
+            return i.some(w => w === domain);
+        }));
     }
 
     /**

@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { randomUUID } from 'crypto';
 import { Awaitable, If } from 'fallout-utility';
+import { DiscordScamLinks } from './DiscordScamLinks';
 
 export interface UrlJsonContentOptions<ResponseData = string[]> {
+    djsScamLinks?: DiscordScamLinks;
     /**
      * Axios fetch options
      */
@@ -14,6 +16,7 @@ export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = b
     private _content: null|string[] = null;
     private _lastFetch: null|Date = null;
 
+    readonly djsScamLinks?: DiscordScamLinks;
     readonly id: string = randomUUID();
     readonly url: string;
     readonly fetchOptions?: Omit<axios.AxiosRequestConfig<string[]>, 'url'|'responseType'>;
@@ -23,6 +26,7 @@ export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = b
     get lastFetch() { return this._lastFetch as If<Fetched, Date>; }
 
     constructor(url: string, options?: UrlJsonContentOptions<ResponseData>) {
+        this.djsScamLinks = options?.djsScamLinks;
         this.url = url;
         this.fetchOptions = options?.fetchOptions;
         this.dataParser = options?.dataParser;
@@ -39,6 +43,8 @@ export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = b
 
         if (this.isFetched()) {
             this._lastFetch = new Date();
+            this.djsScamLinks?.emit('cacheFetch', this);
+
             return this.content;
         }
 
