@@ -5,7 +5,7 @@
     "scripts": {
         "clean": "npx rimraf ./packages/bin ./packages/dist",
         "build": "npm run clean && npx lerna run build && npm i",
-        "publish": "npm run build && npx lerna exec npm publish"
+        "publish": "npx lerna publish --no-private"
     },
     "dependencies": {
         "@falloutstudios/djs-pagination": "file:packages/pagination",
