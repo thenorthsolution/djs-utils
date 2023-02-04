@@ -70,16 +70,16 @@ export class BasePagination<Collected, Sent extends boolean = boolean> extends E
         return (this.command instanceof Message ? this.command.author.id : this.command?.user?.id) || null;
     }
 
-    constructor(options?: BasePaginationData|JSONEncodable<BasePaginationData>) {
+    constructor(options?: Partial<BasePaginationData>|JSONEncodable<BasePaginationData>) {
         super();
 
-        options = typeof (options as BasePagination<Collected>).toJSON === 'function'
+        options = typeof (options as BasePagination<Collected>)?.toJSON === 'function'
             ? (options as BasePagination<Collected>).toJSON()
             : options as BasePaginationData;
 
         this.setPages(...(options?.pages ?? []));
         this.setAuthorId(options?.authorId);
-        this.setAuthorDependent(options.authorDependent ?? this.authorDependent);
+        this.setAuthorDependent(options?.authorDependent ?? this.authorDependent);
         this.setTimer(options?.timer ?? this.timer);
 
         this._currentPageIndex = options?.currentPageIndex ?? this.currentPageIndex;

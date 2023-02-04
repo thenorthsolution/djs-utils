@@ -8,5 +8,3 @@ djsScamLinks.on('cacheAdd', () => {
 });
 
 await djsScamLinks.refreshDomains();
-
-process.openStdin();

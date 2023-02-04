@@ -45,16 +45,16 @@ export class ReactionPaginationBuilder<Sent extends boolean = boolean> extends B
     get collector() { return this._collector as If<Sent, ReactionCollector>; }
     get collectorOptions() { return this._collectorOptions; }
 
-    constructor(options?: ReactionPaginationData|JSONEncodable<ReactionPaginationData>) {
-        options = typeof (options as ReactionPaginationBuilder).toJSON === 'function'
+    constructor(options?: Partial<ReactionPaginationData>|JSONEncodable<ReactionPaginationData>) {
+        options = typeof (options as ReactionPaginationBuilder)?.toJSON === 'function'
             ? (options as ReactionPaginationBuilder).toJSON()
             : options as ReactionPaginationData;
 
         super(options);
 
-        this.setReactions(...(options.reactions ?? []));
-        this.setOnDisable(options.onDisable ?? this.onDisable);
-        this.setSinglePageNoReactions(options.singlePageNoReactions ?? this.singlePageNoReactions);
+        this.setReactions(...(options?.reactions ?? []));
+        this.setOnDisable(options?.onDisable ?? this.onDisable);
+        this.setSinglePageNoReactions(options?.singlePageNoReactions ?? this.singlePageNoReactions);
     }
 
     /**

@@ -45,8 +45,8 @@ export class ButtonPaginationBuilder<Sent extends boolean = boolean> extends Bas
     get collector() { return this._collector as If<Sent, InteractionCollector<MappedInteractionTypes[MessageComponentType]>>; }
     get collectorOptions() { return this._collectorOptions; }
 
-    constructor(options?: ButtonPaginationData|JSONEncodable<ButtonPaginationData>) {
-        options = typeof (options as ButtonPaginationBuilder).toJSON === 'function'
+    constructor(options?: Partial<ButtonPaginationData>|JSONEncodable<ButtonPaginationData>) {
+        options = typeof (options as ButtonPaginationBuilder)?.toJSON === 'function'
             ? (options as ButtonPaginationBuilder).toJSON()
             : options as ButtonPaginationData;
 
