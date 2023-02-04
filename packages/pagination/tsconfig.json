@@ -5,8 +5,8 @@
   ],
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "./dist/lib",
+    "outDir": "./dist",
     "declaration": true,
-    "declarationDir": "./dist/types"
+    "declarationDir": "./dist"
   }
 }

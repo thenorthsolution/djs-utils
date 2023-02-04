@@ -73,7 +73,7 @@ export class BasePagination<Collected, Sent extends boolean = boolean> extends E
     constructor(options?: BasePaginationData|JSONEncodable<BasePaginationData>) {
         super();
 
-        options = (options as BasePagination<Collected>).toJSON !== undefined
+        options = typeof (options as BasePagination<Collected>).toJSON === 'function'
             ? (options as BasePagination<Collected>).toJSON()
             : options as BasePaginationData;
 

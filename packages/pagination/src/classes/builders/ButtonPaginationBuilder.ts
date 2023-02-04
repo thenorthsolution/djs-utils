@@ -46,7 +46,7 @@ export class ButtonPaginationBuilder<Sent extends boolean = boolean> extends Bas
     get collectorOptions() { return this._collectorOptions; }
 
     constructor(options?: ButtonPaginationData|JSONEncodable<ButtonPaginationData>) {
-        options = (options as ButtonPaginationBuilder).toJSON !== undefined
+        options = typeof (options as ButtonPaginationBuilder).toJSON === 'function'
             ? (options as ButtonPaginationBuilder).toJSON()
             : options as ButtonPaginationData;
 

@@ -46,7 +46,7 @@ export class ReactionPaginationBuilder<Sent extends boolean = boolean> extends B
     get collectorOptions() { return this._collectorOptions; }
 
     constructor(options?: ReactionPaginationData|JSONEncodable<ReactionPaginationData>) {
-        options = (options as ReactionPaginationBuilder).toJSON !== undefined
+        options = typeof (options as ReactionPaginationBuilder).toJSON === 'function'
             ? (options as ReactionPaginationBuilder).toJSON()
             : options as ReactionPaginationData;
 
