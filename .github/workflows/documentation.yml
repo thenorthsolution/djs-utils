@@ -4,7 +4,7 @@ on:
     branches: ['main']
     paths: ['**/src/**', '**package.json']
     tags: ['**']
-  workflow-dispatch:
+  workflow_dispatch:
 jobs:
   build:
     name: Build Documentation
