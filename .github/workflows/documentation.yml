@@ -1,0 +1,45 @@
+name: Documentation
+on:
+  push:
+    branches: ['main']
+    paths: ['**/src/**', '**package.json']
+    tags: ['**']
+  workflow-dispatch:
+jobs:
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'FalloutStudios'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install node.js v16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Build Docs
+        run: npm run docs
+
+      - name: Checkout docs branch
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: 'out'
+
+      - name: Move docs to correct directory
+        run: |
+          mv docs/* out
+
+      - name: Commit and push
+        run: |
+          cd out
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .
+          git commit -m "Docs build for ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}: ${GITHUB_SHA}" || true
+          git push
