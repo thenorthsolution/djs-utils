@@ -7,6 +7,5 @@
     "cleanOutputDir": true,
     "name": "Discord.js Utilities",
     "basePath": "djs",
-    "cname": "falloutstudios.github.io/docs",
     "out": "docs"
 }
