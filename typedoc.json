@@ -6,5 +6,6 @@
     ],
     "cleanOutputDir": true,
     "name": "Discord.js Utilities",
+    "basePath": "djs",
     "out": "docs"
 }
