@@ -4,19 +4,14 @@
     "description": "A monorepo of discord.js utility packages",
     "scripts": {
         "clean": "npx rimraf ./packages/bin ./packages/dist",
-        "build": "npm run clean && npx lerna run build && npm i",
-        "publish": "npx lerna publish --no-private"
-    },
-    "dependencies": {
-        "@falloutstudios/djs-pagination": "file:packages/pagination",
-        "@falloutstudios/djs-scam-links": "file:packages/scam-links"
+        "build": "npm run clean && npx lerna run build && npx lerna bootstrap"
     },
     "devDependencies": {
-        "@types/node": "^18.11.18",
+        "@types/node": "^18.14.6",
         "discord.js": "^14.7.1",
-        "lerna": "^6.4.1",
+        "lerna": "^6.5.1",
         "rimraf": "^3.0.2",
-        "typescript": "^4.9.4"
+        "typescript": "^4.9.5"
     },
     "workspaces": [
         "packages/*"
