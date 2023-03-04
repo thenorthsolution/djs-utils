@@ -1,0 +1,9 @@
+{
+    "entryPointStrategy": "packages",
+    "entryPoints": [
+        "./packages/pagination/",
+        "./packages/scam-links/"
+    ],
+    "cleanOutputDir": true,
+    "out": "docs"
+}

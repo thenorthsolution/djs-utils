@@ -4,13 +4,15 @@
     "description": "A monorepo of discord.js utility packages",
     "scripts": {
         "clean": "npx rimraf ./packages/bin ./packages/dist",
-        "build": "npm run clean && npx lerna run build && npx lerna bootstrap"
+        "build": "npm run clean && npx lerna run build && npx lerna bootstrap",
+        "docs": "npx typedoc"
     },
     "devDependencies": {
         "@types/node": "^18.14.6",
         "discord.js": "^14.7.1",
         "lerna": "^6.5.1",
         "rimraf": "^3.0.2",
+        "typedoc": "^0.23.26",
         "typescript": "^4.9.5"
     },
     "workspaces": [
