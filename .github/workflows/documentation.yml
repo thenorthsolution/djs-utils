@@ -33,7 +33,7 @@ jobs:
 
       - name: Move docs to correct directory
         run: |
-          mv docs/* out
+          mv -R docs/* out
 
       - name: Commit and push
         run: |
