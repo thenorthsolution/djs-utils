@@ -18,10 +18,6 @@
             "require": "./dist/index.js"
         }
     },
-    "files": [
-        "dist",
-        "LICENSE"
-    ],
     "scripts": {
         "build": "npx tsc",
         "test": "node ./test/index.mjs"
@@ -35,6 +31,10 @@
     "publishConfig": {
         "access": "public"
     },
+    "files": [
+        "dist",
+        "LICENSE"
+    ],
     "typedoc": {
         "entryPoint": "./src/index.ts"
     }

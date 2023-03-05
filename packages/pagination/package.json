@@ -20,8 +20,20 @@
             "require": "./dist/index.js"
         }
     },
-    "engines": {
-        "node": ">=16.9.0"
+    "scripts": {
+        "build": "npx tsc",
+        "test": "node ./test/index.mjs"
+    },
+    "peerDependencies": {
+        "discord.js": "^14.7.0"
+    },
+    "files": [
+        "dist",
+        "LICENSE",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
     },
     "keywords": [
         "djs",
@@ -30,21 +42,6 @@
         "reaction",
         "button"
     ],
-    "scripts": {
-        "build": "npx tsc",
-        "test": "node ./test/index.mjs"
-    },
-    "files": [
-        "dist",
-        "LICENSE",
-        "README.md"
-    ],
-    "peerDependencies": {
-        "discord.js": "^14.7.0"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
     "typedoc": {
         "entryPoint": "./src/index.ts"
     }
