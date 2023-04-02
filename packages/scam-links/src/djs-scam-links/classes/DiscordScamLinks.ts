@@ -160,7 +160,7 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
             t = replaceAll(t, ['http://', 'https://'], ['', '']);
             const i = t.split('/');
 
-            return i.some(w => w === domain);
+            return i.some(w => w === domain) || t.includes(domain);
         }));
     }
 
