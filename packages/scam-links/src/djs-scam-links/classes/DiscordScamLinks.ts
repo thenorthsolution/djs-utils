@@ -126,41 +126,47 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
      * @param data String data to check
      * @param refreshCache Refresh cache before checking
      */
-    public isMatch(data: string, refreshCache?: false): boolean;
-    public isMatch(data: string, refreshCache?: true): Promise<boolean>;
-    public isMatch(data: string, refreshCache: boolean = false): Awaitable<boolean> {
+    public isMatch(data: string, refreshCache?: false|{ refreshCache?: false; matchNonUrl?: boolean; }): boolean;
+    public isMatch(data: string, refreshCache?: true|{ refreshCache?: true; matchNonUrl?: boolean; }): Promise<boolean>;
+    public isMatch(data: string, _options: boolean|{ refreshCache?: boolean; matchNonUrl?: boolean; } = false): Awaitable<boolean> {
         data = data.toLowerCase();
 
-        if (refreshCache) {
+        const options = typeof _options === 'boolean' ? { refreshCache: _options } : _options;
+
+        if (options.refreshCache) {
             return (async () => {
                 await this.refreshDomains();
                 return !!this.getMatch(data);;
             })();
         }
 
-        return !!this.getMatch(data);
+        return !!this.getMatch(data, options.matchNonUrl);
     }
 
     /**
      * Get the matched domains if anything matches from a string
      * @param data String data
+     * @param matchNonUrl Matches domain to non url string
      */
-    public getMatch(data: string): string|null {
-        return this.getMatches(data)[0] ?? null;
+    public getMatch(data: string, matchNonUrl?: boolean): string|null {
+        return this.getMatches(data, matchNonUrl)[0] ?? null;
     }
 
     /**
      * Get the matched domains if anything matches from a string
      * @param data String data
+     * @param matchNonUrl Matches domain to non url string
      */
-    public getMatches(data: string): string[] {
+    public getMatches(data: string, matchNonUrl?: boolean): string[] {
         const tokens = data.toLowerCase().split(/\s+/);
 
         return this.allDomains.filter(domain => tokens.some(t => {
+            if (matchNonUrl) return t.includes(domain);
+
             t = replaceAll(t, ['http://', 'https://'], ['', '']);
             const i = t.split('/');
 
-            return i.some(w => w === domain) || t.includes(domain);
+            return i.some(w => w === domain);
         }));
     }
 
