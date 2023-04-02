@@ -9,6 +9,6 @@
     "@falloutstudios/djs-pagination": "^1.2.7",
     "@falloutstudios/djs-scam-links": "^1.3.2",
     "discord.js": "^14.8.0",
-    "reciple": "^7.1.9"
+    "reciple": "^7.1.10"
   }
 }
