@@ -68,7 +68,7 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
         if (!this._ready) this._ready = true;
 
         await Promise.all(this.cache.map(async cached => {
-            if (!cached.isFetched() || (!checkCacheAge || (Date.now() - cached.lastFetch.getTime()) >= this.maxCacheAge)) {
+            if (!cached.isFetched() || (!checkCacheAge || !cached.lastFetch || (Date.now() - cached.lastFetch.getTime()) >= this.maxCacheAge)) {
                 await cached.fetch().catch(err => this.emit('error', err));
             }
 
