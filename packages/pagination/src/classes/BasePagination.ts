@@ -261,9 +261,9 @@ export class BasePagination<Collected, Sent extends boolean = boolean> extends E
                 } else {
                     if (this.command.replied || this.command.deferred) throw new Error("Interaction is already replied or deferred");
 
-                    await this.command.reply(page);
+                    const replyId = (await this.command.reply(page)).id;
 
-                    this._pagination = await this.command.fetchReply();
+                    this._pagination = await this.command.fetchReply(replyId);
                     return;
                 }
         }
