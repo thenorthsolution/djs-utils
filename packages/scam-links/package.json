@@ -19,8 +19,7 @@
         }
     },
     "scripts": {
-        "build": "npx tsc",
-        "test": "node ./test/index.mjs"
+        "build": "npx tsc"
     },
     "dependencies": {
         "@discordjs/collection": "^1.5.0",

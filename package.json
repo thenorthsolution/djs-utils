@@ -3,9 +3,11 @@
     "private": true,
     "description": "A monorepo of discord.js utility packages",
     "scripts": {
+        "postinstall": "npx lerna bootstrap",
         "clean": "npx rimraf ./packages/bin ./packages/dist",
-        "build": "npm run clean && npx lerna run build && npx lerna bootstrap",
-        "docs": "npx typedoc"
+        "build": "npm run clean && npx lerna run build",
+        "docs": "npx typedoc",
+        "test": "npx reciple ./test"
     },
     "devDependencies": {
         "@types/node": "^18.15.11",
@@ -16,11 +18,7 @@
         "typescript": "^5.0.3"
     },
     "workspaces": [
-        "packages/*"
-    ],
-    "dependencies": {
-        "@discordjs/collection": "^1.5.0",
-        "@falloutstudios/djs-scam-links": "^1.3.2",
-        "fallout-utility": "^2.3.0"
-    }
+        "packages/*",
+        "test"
+    ]
 }

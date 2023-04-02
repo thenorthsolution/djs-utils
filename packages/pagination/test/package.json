@@ -1,6 +1,0 @@
-{
-    "private": true,
-    "dependencies": {
-        "@falloutstudios/djs-pagination": "^1.2.5"
-    }
-}
