@@ -40,8 +40,5 @@
         "pagination",
         "reaction",
         "button"
-    ],
-    "typedoc": {
-        "entryPoint": "./src/index.ts"
-    }
+    ]
 }

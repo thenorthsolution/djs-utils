@@ -1,11 +1,16 @@
 {
     "entryPointStrategy": "packages",
     "entryPoints": [
-        "./packages/pagination/",
-        "./packages/scam-links/"
+        "./packages/*"
+    ],
+    "plugin": [
+        "@mxssfd/typedoc-theme"
     ],
     "cleanOutputDir": true,
     "name": "Discord.js Utilities",
     "basePath": "djs",
-    "out": "docs"
+    "out": "docs",
+    "json": "docs/docs.json",
+    "theme": "my-theme",
+    "readme": "none",
 }

@@ -10,15 +10,19 @@
         "test": "npx reciple ./test --env \".env\""
     },
     "devDependencies": {
+        "@mxssfd/typedoc-theme": "^1.1.1",
         "@types/node": "^18.15.11",
         "discord.js": "^14.9.0",
         "lerna": "^6.6.1",
-        "rimraf": "^4.4.1",
-        "typedoc": "^0.23.28",
-        "typescript": "^5.0.3"
+        "rimraf": "^5.0.0",
+        "typedoc": "^0.24.1",
+        "typescript": "^5.0.4"
     },
     "workspaces": [
         "packages/*",
         "test"
-    ]
+    ],
+    "dependencies": {
+        "reciple": "^7.3.0"
+    }
 }

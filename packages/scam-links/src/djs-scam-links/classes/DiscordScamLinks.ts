@@ -1,5 +1,4 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
-import { Awaitable, If, RestOrArray, normalizeArray, replaceAll } from 'fallout-utility';
+import { Awaitable, If, RestOrArray, TypedEmitter, normalizeArray, replaceAll } from 'fallout-utility';
 import { Collection } from '@discordjs/collection';
 import { UrlJsonContent, UrlJsonContentOptions } from './UrlJsonContent';
 
@@ -19,10 +18,10 @@ export interface DiscordScamLinksOptions {
 }
 
 export interface DiscordScamLinksEvents {
-    error: (error: Error) => Awaitable<void>;
-    cacheRefresh: () => Awaitable<void>;
-    cacheFetch: (cached: UrlJsonContent<any, true>) => Awaitable<void>;
-    cacheAdd: (cached: UrlJsonContent<any>) => Awaitable<void>;
+    error: [error: Error];
+    cacheRefresh: [];
+    cacheFetch: [cached: UrlJsonContent<any, true>];
+    cacheAdd: [cached: UrlJsonContent<any>];
 }
 
 export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmitter<DiscordScamLinksEvents> {
