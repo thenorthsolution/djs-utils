@@ -64,7 +64,7 @@ export abstract class BasePaginationBuilder<Collected, Events extends BasePagina
         if (options?.authorId) this.setAuthorId(options.authorId);
         if (typeof options?.authorDependent === 'boolean') this.setAuthorDependent(options.authorDependent);
         if (options?.endTimer) this.setEndTimer(options.endTimer);
-        if (options?.singlePageNoControllers) this.setSinglePageNoControllers(options.singlePageNoControllers);
+        if (typeof options?.singlePageNoControllers === 'boolean') this.setSinglePageNoControllers(options.singlePageNoControllers);
         if (options?.additionalActionRows) this.setAdditionalActionRows(options.additionalActionRows);
         if (options?.componentsOrder) this.setComponentsOrder(options.componentsOrder);
         if (options?.collectorOptions) this.setCollectorOptions(options.collectorOptions);

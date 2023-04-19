@@ -3,7 +3,7 @@ import { BasePaginationBuilder, BasePaginationEvents, BasePaginationOptions } fr
 import { ButtonPaginationController, ButtonPaginationControllerResolavable, ButtonPaginationOnEnd, resolveButtonBuilder } from '../types/buttons';
 import { isJSONEncodable } from 'fallout-utility';
 import { PaginationControllerType, SendAs, getEnumValue } from '../types/enums';
-import { PageData } from '..';
+import { PageData } from '../types/page';
 import { InteractionPaginationSendOptions, MessagePaginationSendOptions } from '../types/send';
 
 export interface ButtonPaginationOptions extends BasePaginationOptions {
@@ -37,7 +37,7 @@ export class ButtonPaginationBuilder<Sent extends boolean = boolean> extends Bas
 
         if (options?.buttons) this.setButtons(options.buttons);
         if (options?.onEnd) this.setOnEnd(options.onEnd);
-        if (options?.ephemeral) this.setEphemeral(options.ephemeral);
+        if (typeof options?.ephemeral === 'boolean') this.setEphemeral(options.ephemeral);
     }
 
     public addButton(button: ButtonBuilder|InteractionButtonComponentData|APIButtonComponentWithCustomId, type: (keyof typeof PaginationControllerType)|PaginationControllerType): this {

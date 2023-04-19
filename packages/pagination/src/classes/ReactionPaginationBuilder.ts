@@ -34,7 +34,7 @@ export class ReactionPaginationBuilder<Sent extends boolean = boolean> extends B
 
         if (options?.reactions) this.setReactions(options.reactions);
         if (options?.onEnd) this.setOnEnd(options.onEnd);
-        if (options?.removeReactionOnReact) this.setRemoveReactionOnReact(options.removeReactionOnReact);
+        if (typeof options?.removeReactionOnReact === 'boolean') this.setRemoveReactionOnReact(options.removeReactionOnReact);
     }
 
     public addReaction(emoji: EmojiResolvable, type: (keyof typeof PaginationControllerType)|PaginationControllerType): this {
