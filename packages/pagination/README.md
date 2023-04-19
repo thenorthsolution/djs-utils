@@ -11,12 +11,23 @@ A simple button and reaction pagination library for Discord.js v14
 npm i @falloutstudios/djs-pagination discord.js
 ```
 
+### Features
+- Object Oriented
+- Easy to use
+- Uses Message data as pages instead of embeds
+  - Supports dynamic pages
+  - Allows pages with just message content
+  - Supports multiple embeds in one page
+  - Custom page action rows
+- Supports interaction followUps
+- Highly customizable
+- Typescript support
+
 ## Getting Started
 
 > You can use this in TypeScript, ESM, or CommonJS but in these examples we're gonna use CommonJS.
 
 ### Button Pagination
-> ⚠️ You cannot delete ephemeral pagination & you need to specify `authorId` when using `NewMessage` to `sendAs` param
 
 ```js
 const { ButtonPaginationBuilder } = require('@falloutstudios/djs-pagination');
@@ -31,20 +42,24 @@ bot.on('interactionCreate', async interaction => {
         // Create pagination
         const pagination = new ButtonPaginationBuilder()
             // Add at least one page
-            .addPages([
+            .addPages(
                 new EmbedBuilder().setDescription('Page 1'), // Single embed page
-                { content: 'Page 2', embeds: [] }, // Message data embed
+                { content: 'Page 2', embeds: [{ title: 'Page 2' }] }, // Message data embed
                 'Page 3', // String page
-                () => new EmbedBuilder().setDescription(new Date().toString()) // Dynamic page
-            ])
+                () => new EmbedBuilder().setDescription('Page 4\n' + new Date().toString()) // Dynamic page
+            )
             // All buttons are optional
-            .addButton(new ButtonBuilder().setLabel('Firat').setCustomId('first'), 'FirstPage')
+            .addButton(new ButtonBuilder().setLabel('First').setCustomId('first'), 'FirstPage')
             .addButton(new ButtonBuilder().setLabel('Previous').setCustomId('prev'), 'PreviousPage')
             .addButton(new ButtonBuilder().setLabel('Stop').setCustomId('stop'), 'Stop')
             .addButton(new ButtonBuilder().setLabel('Next').setCustomId('next'), 'NextPage')
             .addButton(new ButtonBuilder().setLabel('Last').setCustomId('last'), 'LastPage');
 
-        await pagination.paginate(interaction, 'ReplyMessage');
+        // Listens to pagination errors
+        pagination.on('error', console.log);
+
+        // Sends the pagination message
+        await pagination.send({ command: interaction, sendAs: 'ReplyMessage' });
     }
 });
 
@@ -66,13 +81,13 @@ bot.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand() && interaction.commandName == 'pagination') {
         // Create pagination
         const pagination = new ReactionPaginationBuilder()
-            // Add at least one page
-            .addPages([
+                // Add at least one page
+            .addPages(
                 new EmbedBuilder().setDescription('Page 1'), // Single embed page
-                { content: 'Page 2', embeds: [] }, // Message data embed
+                { content: 'Page 2', embeds: [{ title: 'Page 2' }] }, // Message data embed
                 'Page 3', // String page
-                () => new EmbedBuilder().setDescription(new Date().toString()) // Dynamic page
-            ])
+                () => new EmbedBuilder().setDescription('Page 4\n' + new Date().toString()) // Dynamic page
+            )
             // All reaction controllers are optional
             .addReaction('⏪', 'FirstPage');
             .addReaction('⬅', 'PreviousPage');
@@ -80,7 +95,11 @@ bot.on('interactionCreate', async interaction => {
             .addReaction('➡️', 'NextPage');
             .addReaction('⏩', 'LastPage');
 
-        await pagination.paginate(interaction, 'ReplyMessage');
+        // Listens to pagination errors
+        pagination.on('error', console.log);
+
+        // Sends the pagination message
+        await pagination.send({ command: interaction, sendAs: 'ReplyMessage' });
     }
 });
 
