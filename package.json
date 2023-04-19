@@ -7,7 +7,7 @@
         "clean": "npx rimraf ./packages/bin ./packages/dist",
         "build": "npm run clean && npx lerna run build",
         "docs": "npx typedoc",
-        "test": "npx reciple ./test --env \".env\""
+        "test": "cd test && npx reciple ./test --env \"../.env\""
     },
     "devDependencies": {
         "@mxssfd/typedoc-theme": "^1.1.1",
@@ -15,7 +15,7 @@
         "discord.js": "^14.9.0",
         "lerna": "^6.6.1",
         "rimraf": "^5.0.0",
-        "typedoc": "^0.24.1",
+        "typedoc": "^0.24.4",
         "typescript": "^5.0.4"
     },
     "workspaces": [
@@ -23,6 +23,6 @@
         "test"
     ],
     "dependencies": {
-        "reciple": "^7.3.0"
+        "reciple": "^7.3.1"
     }
 }

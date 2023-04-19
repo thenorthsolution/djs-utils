@@ -40,5 +40,8 @@
         "pagination",
         "reaction",
         "button"
-    ]
+    ],
+    "dependencies": {
+        "fallout-utility": "^2.4.1"
+    }
 }

@@ -1,19 +1,23 @@
-import { ButtonBuilder, InteractionButtonComponentData } from 'discord.js';
+import { APIButtonComponentWithCustomId, ButtonBuilder, InteractionButtonComponentData } from 'discord.js';
 import { PaginationControllerType } from './enums';
 
-export enum ButtonsOnDisable {
+export enum ButtonPaginationOnEnd {
     Ignore = 1,
     RemoveComponents,
     DisableComponents,
     DeletePagination
 }
 
-export interface Button {
-    builder: ButtonBuilder;
+export interface ButtonPaginationController {
+    button: ButtonBuilder;
     type: PaginationControllerType;
 }
 
-export interface RawButton {
-    builder: ButtonBuilder|InteractionButtonComponentData;
-    type: PaginationControllerType|keyof typeof PaginationControllerType;
+export interface ButtonPaginationControllerResolavable{
+    button: ButtonBuilder|InteractionButtonComponentData|APIButtonComponentWithCustomId;
+    type: (keyof typeof PaginationControllerType)|PaginationControllerType;
+}
+
+export function resolveButtonBuilder(button: ButtonBuilder|InteractionButtonComponentData|APIButtonComponentWithCustomId): ButtonBuilder {
+    return button instanceof ButtonBuilder ? button : new ButtonBuilder(button);
 }
