@@ -6,7 +6,7 @@
     "module": "./dist/esm.mjs",
     "type": "commonjs",
     "license": "GPL-3.0",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_pagination.html",
     "repository": {
         "url": "https://github.com/FalloutStudios/djs.git",
