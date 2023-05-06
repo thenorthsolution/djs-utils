@@ -81,7 +81,7 @@ export abstract class BasePaginationBuilder<Collected, Events extends BasePagina
     }
 
     public setAuthorId(author?: UserResolvable|null): this {
-        this.authorId = (typeof author === 'string' ? author : author?.id) || null;
+        this.authorId = (typeof author === 'string' ? author : author instanceof Message ? author.author.id : author?.id) || null;
         return this;
     }
 
