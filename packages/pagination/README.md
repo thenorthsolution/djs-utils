@@ -11,6 +11,8 @@ A simple button and reaction pagination library for Discord.js v14
 npm i @falloutstudios/djs-pagination discord.js
 ```
 
+> See also [Oceanic Pagination](https://www.npmjs.com/package/oceanic-pagination)
+
 ### Features
 - Object Oriented
 - Easy to use
