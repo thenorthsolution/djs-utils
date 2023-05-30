@@ -11,11 +11,11 @@
     },
     "devDependencies": {
         "@mxssfd/typedoc-theme": "^1.1.1",
-        "@types/node": "^20.1.0",
+        "@types/node": "^20.2.5",
         "discord.js": "^14.11.0",
         "lerna": "^6.6.2",
-        "rimraf": "^5.0.0",
-        "typedoc": "^0.24.6",
+        "rimraf": "^5.0.1",
+        "typedoc": "^0.24.7",
         "typescript": "^5.0.4"
     },
     "workspaces": [
@@ -23,7 +23,6 @@
         "test"
     ],
     "dependencies": {
-        "reciple": "^7.4.3",
-        "typedocs": "^0.6.7"
+        "reciple": "^7.7.3"
     }
 }
