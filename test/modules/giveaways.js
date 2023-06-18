@@ -3,6 +3,7 @@ import { RecipleClient, SlashCommandBuilder } from "reciple";
 import { GiveawayManager, JsonDatapaseAdapter } from '@falloutstudios/djs-giveaways';
 import path from "path";
 import { fileURLToPath } from "url";
+import { userMention } from "discord.js";
 
 // @ts-check
 
@@ -46,6 +47,64 @@ export class Giveaways {
                 });
 
                 await interaction.editReply(message.url);
+            }),
+        new SlashCommandBuilder()
+            .setName('end-giveaway')
+            .setDescription('Ends a giveaway')
+            .addStringOption(giveaway => giveaway
+                .setName('giveaway')
+                .setDescription('The giveaway you want to end')
+                .setRequired(true)
+            )
+            .addBooleanOption(cancel => cancel
+                .setName('cancel')
+                .setDescription('End giveaway without choosing winners')
+            )
+            .setExecute(async ({ interaction }) => {
+                const giveawayId = interaction.options.getString('giveaway', true);
+                const cancel = interaction.options.getBoolean('cancel') || false;
+
+                await interaction.deferReply({ ephemeral: true });
+
+                const giveaway = (await this.giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+                if (!giveaway) {
+                    await interaction.editReply(`Giveaway not found`);
+                    return;
+                }
+
+                await this.giveaways.endGiveaway(giveaway.id, !cancel);
+                await interaction.editReply(`Ended giveaway`);
+            }),
+        new SlashCommandBuilder()
+            .setName('reroll-giveaway')
+            .setDescription('Rerolls giveaway winners')
+            .addStringOption(giveaway => giveaway
+                .setName('giveaway')
+                .setDescription('The giveaway you want to end')
+                .setRequired(true)
+            )
+            .setExecute(async ({ interaction }) => {
+                const giveawayId = interaction.options.getString('giveaway', true);
+                const cancel = interaction.options.getBoolean('cancel') || false;
+
+                await interaction.deferReply({ ephemeral: true });
+
+                const giveaway = (await this.giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+                if (!giveaway) {
+                    await interaction.editReply(`Giveaway not found`);
+                    return;
+                }
+
+                const winners = await this.giveaways.getRandomGiveawayEntries(giveaway.id, giveaway.winnerCount);
+                const message = await this.giveaways.getGiveawayMessage(giveaway);
+
+                if (!winners.selected.length) {
+                    await interaction.editReply(`No winners selected from reroll`);
+                    return;
+                }
+
+                await message.reply(`${winners.selected.map(e => userMention(e.userId)).join('')} won the reroll!`);
+                await interaction.editReply(`Reroll successfull`);
             })
     ];
 
