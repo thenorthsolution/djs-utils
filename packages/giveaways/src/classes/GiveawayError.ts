@@ -1,0 +1,1 @@
+export class GiveawayError extends Error {}
