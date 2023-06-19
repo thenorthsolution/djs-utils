@@ -33,6 +33,8 @@
         "lodash.filter": "^4.6.0"
     },
     "devDependencies": {
-        "@types/lodash.filter": "^4.6.7"
+        "@types/better-sqlite3": "^7.6.4",
+        "@types/lodash.filter": "^4.6.7",
+        "better-sqlite3": "^8.4.0"
     }
 }

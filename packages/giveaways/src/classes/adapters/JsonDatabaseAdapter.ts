@@ -112,6 +112,8 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
     public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
     public async deleteGiveaway(filter: Partial<IGiveaway>, count?: number): Promise<IGiveaway[]>;
     public async deleteGiveaway(filter: string|Partial<IGiveaway>, count?: number): Promise<IGiveaway|IGiveaway[]|undefined> {
+        const findFirst = typeof filter === 'string';
+
         filter = typeof filter === 'string' ? { id: filter } : filter;
 
         await this.fetchJson();
@@ -122,7 +124,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
 
         await this.saveJson();
 
-        return giveaways;
+        return findFirst ? giveaways[0] : giveaways;
     }
 
     public async fetchGiveawayEntries(options: { filter?: Partial<IGiveawayEntry>; count?: number; }): Promise<IGiveawayEntry[]> {
@@ -170,6 +172,8 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
     public async deleteGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined>;
     public async deleteGiveawayEntry(filter: Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry[]>;
     public async deleteGiveawayEntry(filter: string|Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry|IGiveawayEntry[]|undefined> {
+        const findFirst = typeof filter === 'string';
+
         filter = typeof filter === 'string' ? { id: filter } : filter;
 
         await this.fetchJson();
@@ -177,7 +181,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
 
         this._raw.entries = this._raw.entries.filter(e => !entries.some(d => d.id === e.id));
         await this.saveJson();
-        return entries;
+        return findFirst ? entries[0] : entries;
     }
 
     // Static Methods
