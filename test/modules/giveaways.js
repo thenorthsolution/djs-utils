@@ -1,6 +1,6 @@
 import ms from "ms";
 import { RecipleClient, SlashCommandBuilder } from "reciple";
-import { GiveawayManager, SqliteDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import path from "path";
 import { fileURLToPath } from "url";
 import { ChatInputCommandInteraction, userMention } from "discord.js";
@@ -105,7 +105,7 @@ export class Giveaways {
     onStart(client) {
         this.giveaways = new GiveawayManager({
             client,
-            databaseAdapter: new SqliteDatabaseAdapter({
+            databaseAdapter: new Sqlite3DatabaseAdapter({
                 file: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.cache/giveaways.db'),
             }),
         });

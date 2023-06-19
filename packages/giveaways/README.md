@@ -14,7 +14,7 @@ npm i @falloutstudios/djs-giveaways discord.js
 ## Usage
 
 ```js
-import { GiveawayManager, JsonDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { Client } from 'discord.js';
 
 // The discord bot client
@@ -25,7 +25,7 @@ const client = new Client({
 // The giveaway manager
 const giveaways = new GiveawayManager({
     // Json database is not recommended for large bots
-    databaseAdapter: new JsonDatabaseAdapter(),
+    databaseAdapter: new Sqlite3DatabaseAdapter(),
     client
 });
 

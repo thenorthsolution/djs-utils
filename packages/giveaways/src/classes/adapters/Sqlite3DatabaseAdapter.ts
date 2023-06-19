@@ -2,15 +2,15 @@ import { count } from 'console';
 import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
 import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
 import { GiveawayManager } from '../GiveawayManager';
-import type sqlite3 from 'better-sqlite3';
+import type Sqlite3 from 'better-sqlite3';
 import path from 'path';
 
-export interface SqliteDatabaseAdapterOptions {
+export interface Sqlite3DatabaseAdapterOptions {
     file?: string;
-    databaseOptions?: sqlite3.Options;
+    databaseOptions?: Sqlite3.Options;
 }
 
-export interface RawSqliteGiveaway extends Omit<IGiveaway, 'endsAt'|'createdAt'|'endedAt'|'winnersEntryId'|'ended'> {
+export interface RawSqlite3Giveaway extends Omit<IGiveaway, 'endsAt'|'createdAt'|'endedAt'|'winnersEntryId'|'ended'> {
     endsAt: string;
     createdAt: string;
     ended: 'true'|'false';
@@ -18,15 +18,15 @@ export interface RawSqliteGiveaway extends Omit<IGiveaway, 'endsAt'|'createdAt'|
     winnersEntryId: string;
 }
 
-export interface RawSqliteGiveawayEntry extends Omit<IGiveawayEntry, 'createdAt'> {
+export interface RawSqlite3GiveawayEntry extends Omit<IGiveawayEntry, 'createdAt'> {
     createdAt: string;
 }
 
-export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
+export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
     readonly file: string = path.join(process.cwd(), 'giveaways.db');
-    readonly database: sqlite3.Database;
+    readonly database: Sqlite3.Database;
 
-    constructor(options?: SqliteDatabaseAdapterOptions) {
+    constructor(options?: Sqlite3DatabaseAdapterOptions) {
         super();
 
         try {
@@ -83,7 +83,7 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
                 let value: any = (options.filter ?? {})[key as keyof IGiveaway];
                 if (value === undefined) return;
 
-                value = SqliteDatabaseAdapter.parseValue(value);
+                value = Sqlite3DatabaseAdapter.parseValue(value);
 
                 query += ` ${index ? 'AND ' : ''}${key} = ?`;
                 values.push(value);
@@ -94,12 +94,12 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
             query += `LIMIT ${count}`;
         }
 
-        return this.database.prepare(query).all(...values).map(g => SqliteDatabaseAdapter.parseGiveaway(g as RawSqliteGiveaway));
+        return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveaway(g as RawSqlite3Giveaway));
     }
 
     public async fetchGiveaway(giveawayId: string): Promise<IGiveaway|undefined> {
-        const data = this.database.prepare(`SELECT * FROM 'Giveaways' WHERE id = ?`).get(giveawayId) as RawSqliteGiveaway|undefined;
-        return data ? SqliteDatabaseAdapter.parseGiveaway(data) : undefined;
+        const data = this.database.prepare(`SELECT * FROM 'Giveaways' WHERE id = ?`).get(giveawayId) as RawSqlite3Giveaway|undefined;
+        return data ? Sqlite3DatabaseAdapter.parseGiveaway(data) : undefined;
     }
 
     public async createGiveaway(data: IGiveaway): Promise<IGiveaway> {
@@ -140,7 +140,7 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
                 let value: any = (data ?? {})[key as keyof IGiveaway];
                 if (value === undefined) return;
 
-                value = SqliteDatabaseAdapter.parseValue(value)
+                value = Sqlite3DatabaseAdapter.parseValue(value)
 
                 query += ` ${key} = ?${key !== (keys[keys.length - 1]) ? ',' : ''}`;
                 values.push(value);
@@ -192,7 +192,7 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
                 let value: any = (options.filter ?? {})[key as keyof IGiveawayEntry];
                 if (value === undefined) return;
 
-                value = SqliteDatabaseAdapter.parseValue(value);
+                value = Sqlite3DatabaseAdapter.parseValue(value);
 
                 query += ` ${index ? 'AND ' : ''}${key} = ?`;
                 values.push(value);
@@ -203,12 +203,12 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
             query += `LIMIT ${count}`;
         }
 
-        return this.database.prepare(query).all(...values).map(g => SqliteDatabaseAdapter.parseGiveawayEntry(g as RawSqliteGiveawayEntry));
+        return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveawayEntry(g as RawSqlite3GiveawayEntry));
     }
 
     public async fetchGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined> {
-        const data = this.database.prepare(`SELECT * FROM 'GiveawayEntries' WHERE id = ?`).get(entryId) as RawSqliteGiveawayEntry|undefined;
-        return data ? SqliteDatabaseAdapter.parseGiveawayEntry(data) : undefined;
+        const data = this.database.prepare(`SELECT * FROM 'GiveawayEntries' WHERE id = ?`).get(entryId) as RawSqlite3GiveawayEntry|undefined;
+        return data ? Sqlite3DatabaseAdapter.parseGiveawayEntry(data) : undefined;
     }
 
     public async createGiveawayEntry(giveawayId: string, data: IGiveawayEntry): Promise<IGiveawayEntry> {
@@ -244,7 +244,7 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
                 let value: any = (data ?? {})[key as keyof IGiveawayEntry];
                 if (value === undefined) return;
 
-                    value = SqliteDatabaseAdapter.parseValue(value);
+                    value = Sqlite3DatabaseAdapter.parseValue(value);
 
                 query += ` ${key} = ?${key !== (keys[keys.length - 1]) ? ',' : ''}`;
                 values.push(value);
@@ -287,9 +287,9 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
 
     // Static Methods
 
-    public static parseGiveaway(giveaway: IGiveaway): RawSqliteGiveaway;
-    public static parseGiveaway(giveaway: RawSqliteGiveaway): IGiveaway;
-    public static parseGiveaway(giveaway: IGiveaway|RawSqliteGiveaway): IGiveaway|RawSqliteGiveaway {
+    public static parseGiveaway(giveaway: IGiveaway): RawSqlite3Giveaway;
+    public static parseGiveaway(giveaway: RawSqlite3Giveaway): IGiveaway;
+    public static parseGiveaway(giveaway: IGiveaway|RawSqlite3Giveaway): IGiveaway|RawSqlite3Giveaway {
         return {
             ...giveaway,
             createdAt: this.parseDate(giveaway.createdAt) as any,
@@ -302,9 +302,9 @@ export class SqliteDatabaseAdapter extends BaseDatabaseAdapter {
         };
     }
 
-    public static parseGiveawayEntry(entry: IGiveawayEntry): RawSqliteGiveawayEntry;
-    public static parseGiveawayEntry(entry: RawSqliteGiveawayEntry): IGiveawayEntry;
-    public static parseGiveawayEntry(entry: IGiveawayEntry|RawSqliteGiveawayEntry): IGiveawayEntry|RawSqliteGiveawayEntry {
+    public static parseGiveawayEntry(entry: IGiveawayEntry): RawSqlite3GiveawayEntry;
+    public static parseGiveawayEntry(entry: RawSqlite3GiveawayEntry): IGiveawayEntry;
+    public static parseGiveawayEntry(entry: IGiveawayEntry|RawSqlite3GiveawayEntry): IGiveawayEntry|RawSqlite3GiveawayEntry {
         return {
             ...entry,
             createdAt: this.parseDate(entry.createdAt) as any,
