@@ -17,17 +17,21 @@ npm i @falloutstudios/djs-giveaways discord.js
 import { GiveawayManager, JsonDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { Client } from 'discord.js';
 
+// The discord bot client
 const client = new Client({
     intents: ['Guilds', 'GuildMessages']
 });
 
+// The giveaway manager
 const giveaways = new GiveawayManager({
+    // Json database is not recommended for large bots
     databaseAdapter: new JsonDatabaseAdapter(),
     client
 });
 
 client.on('ready', async () => {
-    await client.start();
+    // Start giveaway listeners
+    await giveaways.start();
 });
 
 client.on('interactionCreate', async interaction => {
