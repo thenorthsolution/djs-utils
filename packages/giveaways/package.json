@@ -28,6 +28,9 @@
         "dist",
         "LICENSE"
     ],
+    "keywords": [
+        "giveaways", "discord.js"
+    ],
     "dependencies": {
         "fallout-utility": "^2.5.1",
         "lodash.filter": "^4.6.0"
