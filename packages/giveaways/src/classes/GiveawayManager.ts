@@ -123,7 +123,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
         embed.setTitle(giveaway.name);
         embed.setAuthor({ name: '🎉 Giveaway' });
         embed.setColor(giveaway.ended ? 'DarkButNotBlack' : 'Blue');
-        embed.addFields({ name: `${inlineCode('⏲️')} Ends`, value: time(giveaway.endsAt) });
+        embed.addFields({ name: `${inlineCode('⏲️')} End${giveaway.ended ? 'ed' : 's'}`, value: time(giveaway.endsAt, 'R') + (!giveaway.ended ? `(${time(giveaway.endsAt)})` : '') });
         embed.addFields({ name: `${inlineCode('👥')} Entrie${(giveaway.entries ?? 0) > 1 ? 's' : ''}`, value: `${giveaway.entries ? inlineCode(giveaway.entries.toLocaleString('en-US')) : '**No entries**'}` });
         embed.setFooter({ text: giveaway.ended ? 'Ended' : 'Active' });
         embed.setTimestamp(giveaway?.endedAt ?? giveaway.createdAt);
