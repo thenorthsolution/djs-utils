@@ -1,0 +1,38 @@
+{
+    "name": "@falloutstudios/djs-giveaways",
+    "license": "GPL-3.0",
+    "version": "1.3.3",
+    "main": "./dist/index.js",
+    "module": "./dist/esm.mjs",
+    "types": "./dist/index.d.ts",
+    "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_giveaways.html",
+    "repository": {
+        "url": "https://github.com/FalloutStudios/djs.git",
+        "directory": "packages/giveaways",
+        "type": "git"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/esm.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "npx tsc"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist",
+        "LICENSE"
+    ],
+    "dependencies": {
+        "fallout-utility": "^2.5.1",
+        "lodash.filter": "^4.6.0"
+    },
+    "devDependencies": {
+        "@types/lodash.filter": "^4.6.7"
+    }
+}
