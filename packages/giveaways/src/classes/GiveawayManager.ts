@@ -118,6 +118,8 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             content: options.content
         });
 
+        data.entries = undefined;
+
         const { id } = await this.databaseAdapter.createGiveaway({
             ...data,
             id: this.createDataId(),
@@ -137,16 +139,14 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
      * @param fetchWinnerEntries Fetch winner entries
      * @returns Returns the giveaway winners if fetchWinnerEntries is enabled
      */
-    public async endGiveaway(giveawayId: string, fetchWinnerEntries?: true): Promise<undefined>;
-    public async endGiveaway(giveawayId: string, fetchWinnerEntries?: false): Promise<IGiveawayEntry[]>;
-    public async endGiveaway(giveawayId: string, fetchWinnerEntries: boolean = true): Promise<undefined|IGiveawayEntry[]> {
+    public async endGiveaway(giveawayId: string, fetchWinnerEntries: boolean = true): Promise<IGiveawayEntry[]> {
         if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
 
         this.deleteGiveawayTimeout(giveawayId);
 
         const giveaway = await this.databaseAdapter.fetchGiveaway(giveawayId);
         const entries = await Promise.all((giveaway?.winnersEntryId ?? []).map(e => this.databaseAdapter.fetchGiveawayEntry(e)).filter(Boolean)) as IGiveawayEntry[];
-        if (!giveaway || giveaway.ended) return fetchWinnerEntries ? entries : undefined;
+        if (!giveaway || giveaway.ended) return entries;
 
         const winners = fetchWinnerEntries
             ? await this.getRandomGiveawayEntries(giveawayId, giveaway.winnerCount)
@@ -171,7 +171,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             entries: winners.entries.length ?? 0
         }));
 
-        return fetchWinnerEntries ? (winners?.selected ?? []) : undefined
+        return (winners?.selected ?? []);
     }
 
     /**
@@ -364,7 +364,10 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
     }
 
     protected async createGiveawayTimeout(giveawayId: string, endsAt: Date): Promise<void> {
-        if (endsAt.getTime() <= Date.now()) return this.endGiveaway(giveawayId);
+        if (endsAt.getTime() <= Date.now()) {
+            this.endGiveaway(giveawayId);
+            return;
+        }
 
         const timer = endsAt.getTime() - Date.now();
         const timeout = setTimeout(() => this.endGiveaway(giveawayId).catch(err => this.emit('error', err)), timer).unref();
@@ -381,26 +384,38 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
     }
 
     private async _guildDelete(guild: Guild): Promise<void> {
-        const giveaways = await this.databaseAdapter.deleteGiveaway({ guildId: guild.id });
+        try {
+            const giveaways = await this.databaseAdapter.deleteGiveaway({ guildId: guild.id });
 
-        for (const giveaway of giveaways) {
-            await this.endGiveaway(giveaway.id);
+            for (const giveaway of giveaways) {
+                await this.endGiveaway(giveaway.id);
+            }
+        } catch(err) {
+            this.emit('error', err);
         }
     }
 
     private async _channelDelete(channel: Channel): Promise<void> {
-        const giveaways = await this.databaseAdapter.deleteGiveaway({ channelId: channel.id });
+        try {
+            const giveaways = await this.databaseAdapter.deleteGiveaway({ channelId: channel.id });
 
-        for (const giveaway of giveaways) {
-            await this.endGiveaway(giveaway.id);
+            for (const giveaway of giveaways) {
+                await this.endGiveaway(giveaway.id);
+            }
+        } catch(err) {
+            this.emit('error', err);
         }
     }
 
     private async _messageDelete(message: Message|PartialMessage): Promise<void> {
-        const giveaways = await this.databaseAdapter.deleteGiveaway({ messageId: message.id });
+        try {
+            const giveaways = await this.databaseAdapter.deleteGiveaway({ messageId: message.id });
 
-        for (const giveaway of giveaways) {
-            await this.endGiveaway(giveaway.id);
+            for (const giveaway of giveaways) {
+                await this.endGiveaway(giveaway.id);
+            }
+        } catch(err) {
+            this.emit('error', err);
         }
     }
 
@@ -413,27 +428,32 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
     private async _interactionCreate(interaction: Interaction): Promise<void> {
         if (!interaction.isButton() || interaction.customId !== this.joinButtonCustomId) return;
 
-        await interaction.deferReply({ ephemeral: true });
+        const deffered = await interaction.deferReply({ ephemeral: true }).catch(err => this.emit('error', err));
+        if (!deffered) return;
 
-        const message = interaction.message;
-        const giveaways = await this.databaseAdapter.fetchGiveaways({ filter: { messageId: message.id } });
-        const giveaway = giveaways[0] as IGiveaway|undefined;
+        try {
+            const message = interaction.message;
+            const giveaways = await this.databaseAdapter.fetchGiveaways({ filter: { messageId: message.id } });
+            const giveaway = giveaways[0] as IGiveaway|undefined;
 
-        if (!giveaway) {
-            await interaction.editReply(`${inlineCode('❌')} Unable to find giveaway from this message`);
-            return;
-        }
+            if (!giveaway) {
+                await interaction.editReply(`${inlineCode('❌')} Unable to find giveaway from this message`);
+                return;
+            }
 
-        const entry = await this.toggleGiveawayEntry(giveaway.id, interaction.user.id).catch(() => undefined);
-        if (entry === undefined) {
-            await interaction.editReply(`${inlineCode('❌')} Unable to add/remove entry`);
-            return;
-        }
+            const entry = await this.toggleGiveawayEntry(giveaway.id, interaction.user.id).catch(() => undefined);
+            if (entry === undefined) {
+                await interaction.editReply(`${inlineCode('❌')} Unable to add/remove entry`);
+                return;
+            }
 
-        if (entry) {
-            await interaction.editReply(`${inlineCode('🎉')} Successfully added new entry!`);
-        } else {
-            await interaction.editReply(`${inlineCode('🎉')} Successfully removed current entry!`);
+            if (entry) {
+                await interaction.editReply(`${inlineCode('🎉')} Successfully added new entry!`);
+            } else {
+                await interaction.editReply(`${inlineCode('🎉')} Successfully removed current entry!`);
+            }
+        } catch (err) {
+            this.emit('error', err);
         }
     }
 
