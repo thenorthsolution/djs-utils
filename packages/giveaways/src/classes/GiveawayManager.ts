@@ -53,7 +53,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
 
         if (entry) {
             await this.databaseAdapter.deleteGiveawayEntry(entry.id);
-            entries = entries.filter(e => entry?.id === e.id);
+            entries = entries.filter(e => entry?.id !== e.id);
 
             entry = null;
         } else {
