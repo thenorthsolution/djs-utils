@@ -20,7 +20,7 @@ export interface RawJsonGiveawayEntry extends Omit<IGiveawayEntry, 'createdAt'> 
     createdAt: string;
 }
 
-export interface JsonDatapaseAdapterOptions {
+export interface JsonDatabaseAdapterOptions {
     file?: string;
     parser?: {
         parse(data: string): JsonDatabaseSchema;
@@ -28,23 +28,23 @@ export interface JsonDatapaseAdapterOptions {
     };
 }
 
-export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
+export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
     private _raw: JsonDatabaseSchema = { giveaways: [], entries: [] };
 
     readonly file: string = path.join(process.cwd(), 'giveaways.json');
-    readonly parser: Exclude<JsonDatapaseAdapterOptions['parser'], undefined> = JSON;
+    readonly parser: Exclude<JsonDatabaseAdapterOptions['parser'], undefined> = JSON;
 
     get data() {
         return {
-            giveaways: this._raw.giveaways.map(g => JsonDatapaseAdapter.parseGiveaway(g)),
-            entries: this._raw.entries.map(e => JsonDatapaseAdapter.parseGiveawayEntry(e))
+            giveaways: this._raw.giveaways.map(g => JsonDatabaseAdapter.parseGiveaway(g)),
+            entries: this._raw.entries.map(e => JsonDatabaseAdapter.parseGiveawayEntry(e))
         };
     };
 
     get giveaways() { return this.data.giveaways; }
     get entries() { return this.data.entries; }
 
-    constructor(options?: JsonDatapaseAdapterOptions) {
+    constructor(options?: JsonDatabaseAdapterOptions) {
         super();
 
         this.file = options?.file ? path.resolve(options.file) : this.file;
@@ -84,7 +84,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         const isExists = this.giveaways.some(g => g.id === data.id || g.messageId === data.messageId);
         if (isExists) throw new Error('Unable to create new giveaway! given id or messageId is already used');
 
-        this._raw.giveaways.push(JsonDatapaseAdapter.parseGiveaway(data));
+        this._raw.giveaways.push(JsonDatabaseAdapter.parseGiveaway(data));
         await this.saveJson();
 
         const giveaway = this.giveaways.find(g => g.id === data.id);
@@ -98,7 +98,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         if (!giveaway) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
 
         const giveawayIndex = this.giveaways.findIndex(g => g.id === giveawayId);
-        const newGiveaway: RawJsonGiveaway = JsonDatapaseAdapter.parseGiveaway({
+        const newGiveaway: RawJsonGiveaway = JsonDatabaseAdapter.parseGiveaway({
             ...giveaway,
             ...data
         });
@@ -106,7 +106,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         this._raw.giveaways[giveawayIndex] = newGiveaway;
         await this.saveJson();
 
-        return JsonDatapaseAdapter.parseGiveaway(newGiveaway);
+        return JsonDatabaseAdapter.parseGiveaway(newGiveaway);
     }
 
     public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
@@ -144,7 +144,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         const isExists = this.entries.find(e => e.id === data.id || (e.giveawayId === data.giveawayId && e.userId === data.userId));
         if (isExists) throw new Error('Unable to create giveaway entry! Entry id already exists');
 
-        this._raw.entries.push(JsonDatapaseAdapter.parseGiveawayEntry(data));
+        this._raw.entries.push(JsonDatabaseAdapter.parseGiveawayEntry(data));
         await this.saveJson();
 
         const entry = this.entries.find(e => e.id === data.id);
@@ -158,7 +158,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         if (!entry) throw new Error(`Unable to entry! Entry id not found: ${entryId}`);
 
         const entryIndex = this._raw.entries.findIndex(e => e.id === entryId);
-        const newEntry: RawJsonGiveawayEntry = JsonDatapaseAdapter.parseGiveawayEntry({
+        const newEntry: RawJsonGiveawayEntry = JsonDatabaseAdapter.parseGiveawayEntry({
             ...entry,
             ...data
         });
@@ -166,7 +166,7 @@ export class JsonDatapaseAdapter extends BaseDatabaseAdapter {
         this._raw.entries[entryIndex] = newEntry;
         await this.saveJson();
 
-        return JsonDatapaseAdapter.parseGiveawayEntry(newEntry);
+        return JsonDatabaseAdapter.parseGiveawayEntry(newEntry);
     }
 
     public async deleteGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined>;
