@@ -42,6 +42,6 @@
         "button"
     ],
     "dependencies": {
-        "fallout-utility": "^2.4.1"
+        "fallout-utility": "^2.7.1"
     }
 }

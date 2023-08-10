@@ -29,15 +29,16 @@
         "LICENSE"
     ],
     "keywords": [
-        "giveaways", "discord.js"
+        "giveaways",
+        "discord.js"
     ],
     "dependencies": {
-        "fallout-utility": "^2.5.1",
+        "fallout-utility": "^2.7.1",
         "lodash.filter": "^4.6.0"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.4",
         "@types/lodash.filter": "^4.6.7",
-        "better-sqlite3": "^8.4.0"
+        "better-sqlite3": "^8.5.0"
     }
 }
