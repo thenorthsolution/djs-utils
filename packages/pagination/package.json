@@ -24,7 +24,7 @@
         "build": "npx tsc"
     },
     "peerDependencies": {
-        "discord.js": "^14.7.0"
+        "discord.js": "^14.13.0"
     },
     "files": [
         "dist",

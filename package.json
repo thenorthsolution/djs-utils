@@ -10,8 +10,8 @@
     },
     "devDependencies": {
         "@mxssfd/typedoc-theme": "^1.1.2",
-        "@types/node": "^20.4.9",
-        "discord.js": "^14.12.1",
+        "@types/node": "^20.5.2",
+        "discord.js": "^14.13.0",
         "lerna": "^7.1.5",
         "rimraf": "^5.0.1",
         "typedoc": "^0.24.8",
