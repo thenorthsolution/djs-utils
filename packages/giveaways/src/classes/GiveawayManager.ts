@@ -7,6 +7,11 @@ import { randomBytes } from 'crypto';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
+    giveawayCreate: [giveaway: IGiveaway];
+    giveawayEnd: [giveaway: IGiveaway, entries: { entries: IGiveawayEntry[]; selected: IGiveawayEntry[]; }];
+    giveawayDelete: [giveaway: IGiveaway];
+    giveawayEntryAdd: [entry: IGiveawayEntry, giveawayId: string];
+    giveawayEntryDelete: [entry: IGiveawayEntry, giveawayId: string];
 }
 
 export interface GiveawayManagerOptions {
@@ -55,6 +60,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             await this.databaseAdapter.deleteGiveawayEntry(entry.id);
             entries = entries.filter(e => entry?.id !== e.id);
 
+            this.emit('giveawayEntryDelete', entry, giveawayId);
             entry = null;
         } else {
             entry = await this.databaseAdapter.createGiveawayEntry(giveawayId, {
@@ -65,6 +71,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             });
 
             entries.push(entry);
+            this.emit('giveawayEntryAdd', entry, giveawayId);
         }
 
         if (updateMessage) {
@@ -120,7 +127,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
 
         data.entries = undefined;
 
-        const { id } = await this.databaseAdapter.createGiveaway({
+        const giveaway = await this.databaseAdapter.createGiveaway({
             ...data,
             id: this.createDataId(),
             guildId: message.guildId,
@@ -128,7 +135,8 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             messageId: message.id
         });
 
-        this.createGiveawayTimeout(id, endsAt);
+        this.createGiveawayTimeout(giveaway.id, endsAt);
+        this.emit('giveawayCreate', giveaway);
 
         return message;
     }
@@ -166,12 +174,14 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             winnersEntryId: winners.selected.map(s => s.id) ?? []
         });
 
+        this.emit('giveawayEnd', giveaway, winners);
+
         await message.edit(await this.createGiveawayMessageOptions({
             ...endedGiveaway,
             entries: winners.entries.length ?? 0
         }));
 
-        return (winners?.selected ?? []);
+        return winners.selected;
     }
 
     /**
@@ -191,6 +201,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
 
         await message?.delete();
         await this.databaseAdapter.deleteGiveaway(giveawayId);
+        this.emit('giveawayDelete', giveaway);
 
         return giveaway;
     }
