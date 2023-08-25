@@ -1,8 +1,8 @@
-import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
-import { TypedEmitter, getRandomKey } from 'fallout-utility';
-import { BaseMessageOptions, ButtonBuilder, ButtonStyle, Channel, Client, Collection, ComponentType, EmbedBuilder, Guild, Interaction, Message, PartialMessage, inlineCode, time, userMention } from 'discord.js';
-import { GiveawayError } from './GiveawayError';
+import { Awaitable, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, Channel, Client, Collection, ComponentType, EmbedBuilder, Guild, Interaction, Message, PartialMessage, inlineCode, time, userMention } from 'discord.js';
 import { CreateGiveawayMessageOptions, CreateGiveawayOptions, IGiveaway, IGiveawayEntry } from '../types/giveaway';
+import { TypedEmitter, getRandomKey } from 'fallout-utility';
+import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
+import { GiveawayError } from './GiveawayError';
 import { randomBytes } from 'crypto';
 
 export interface GiveawayManagerEvents {
@@ -18,6 +18,7 @@ export interface GiveawayManagerOptions {
     databaseAdapter: BaseDatabaseAdapter;
     client: Client;
     joinButtonCustomId?: string;
+    onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
 }
 
 export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
@@ -25,6 +26,7 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
     readonly databaseAdapter: BaseDatabaseAdapter;
     readonly giveawayTimouts: Collection<string, { giveawayId: string; timeout: NodeJS.Timeout; }> = new Collection();
     readonly joinButtonCustomId: string = 'giveaway-join';
+    readonly onBeforeHandleInteraction: Exclude<GiveawayManagerOptions['onBeforeHandleInteraction'], undefined> = () => true;
 
     private _ready: boolean = false;
 
@@ -443,6 +445,9 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
         if (!deffered) return;
 
         try {
+            const allowed = await Promise.resolve(this.onBeforeHandleInteraction(interaction));
+            if (allowed === false) return;
+
             const message = interaction.message;
             const giveaways = await this.databaseAdapter.fetchGiveaways({ filter: { messageId: message.id } });
             const giveaway = giveaways[0] as IGiveaway|undefined;
