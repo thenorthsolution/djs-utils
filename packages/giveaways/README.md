@@ -11,10 +11,16 @@ A giveaway library for discord.js
 npm i @falloutstudios/djs-giveaways discord.js
 ```
 
+## Available Database Adapter
+
+- [`JsonDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JsonDatapaseAdapter.html)
+- [`MongodbDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.MongodbDatabaseAdapter.html)
+- [`Sqlite3DatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.Sqlite3DatabaseAdapter.html)
+
 ## Usage
 
 ```js
-import { GiveawayManager, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { Client } from 'discord.js';
 
 // The discord bot client
@@ -25,7 +31,9 @@ const client = new Client({
 // The giveaway manager
 const giveaways = new GiveawayManager({
     // Json database is not recommended for large bots
-    databaseAdapter: new Sqlite3DatabaseAdapter(),
+    databaseAdapter: new MongodbDatabaseAdapter({
+        mongooseConnection: `mongodb://username:password@host:port/database`
+    }),
     client
 });
 
