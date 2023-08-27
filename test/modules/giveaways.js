@@ -1,18 +1,15 @@
 import ms from "ms";
 import { RecipleClient, SlashCommandBuilder } from "reciple";
-import { GiveawayManager, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
-import path from "path";
-import { fileURLToPath } from "url";
+import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
-import anticrash from "./utils/anticrash.js";
 
 // @ts-check
 
 export class Giveaways {
     versions = '^7';
     /**
-     * @type {GiveawayManager|null}
+     * @type {GiveawayManager<MongodbDatabaseAdapter>|null}
      */
     giveaways = null;
     commands = [
@@ -118,7 +115,7 @@ export class Giveaways {
      * @param {RecipleClient} client
      */
     async onLoad(client) {
-        this.giveaways.on('error', err => anticrash.default.report(err));
+        this.giveaways.on('error', console.log);
 
         await this.giveaways.start();
         await this.giveaways.clean();

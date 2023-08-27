@@ -13,9 +13,9 @@ export interface BaseDatabaseAdapterEvents {
 }
 
 export abstract class BaseDatabaseAdapter<Events extends BaseDatabaseAdapterEvents = BaseDatabaseAdapterEvents> extends TypedEmitter<Events> {
-    public manager!: GiveawayManager;
+    public manager!: GiveawayManager<this>;
 
-    public async start(manager: GiveawayManager): Promise<void> {
+    public async start(manager: GiveawayManager<this>): Promise<void> {
         this.manager = manager;
     }
 

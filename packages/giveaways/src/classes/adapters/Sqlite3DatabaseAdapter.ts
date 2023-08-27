@@ -39,7 +39,7 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         this.database = require('better-sqlite3')(this.file, options?.databaseOptions);
     }
 
-    public async start(manager: GiveawayManager): Promise<void> {
+    public async start(manager: GiveawayManager<this>): Promise<void> {
         this.database.exec(`
             CREATE TABLE IF NOT EXISTS "Giveaways" (
                 "id" TEXT NOT NULL PRIMARY KEY,

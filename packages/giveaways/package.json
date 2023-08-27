@@ -33,12 +33,14 @@
         "discord.js"
     ],
     "dependencies": {
+        "@reciple/utils": "^7.1.2",
         "fallout-utility": "^2.7.1",
-        "lodash.filter": "^4.6.0"
+        "lodash": "^4.17.21",
+        "mongoose": "^7.4.5"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.4",
-        "@types/lodash.filter": "^4.6.7",
-        "better-sqlite3": "^8.5.1"
+        "@types/lodash": "^4.14.197",
+        "better-sqlite3": "^8.5.2"
     }
 }

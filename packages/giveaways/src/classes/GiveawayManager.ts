@@ -4,6 +4,7 @@ import { TypedEmitter, getRandomKey } from 'fallout-utility';
 import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
 import { GiveawayError } from './GiveawayError';
 import { randomBytes } from 'crypto';
+import { resolveFromCachedCollection } from '@reciple/utils';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
@@ -14,23 +15,23 @@ export interface GiveawayManagerEvents {
     giveawayEntryDelete: [entry: IGiveawayEntry, giveawayId: string];
 }
 
-export interface GiveawayManagerOptions {
-    databaseAdapter: BaseDatabaseAdapter;
+export interface GiveawayManagerOptions<A extends BaseDatabaseAdapter = BaseDatabaseAdapter> {
+    databaseAdapter: A;
     client: Client;
     joinButtonCustomId?: string;
     onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
 }
 
-export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
+export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter> extends TypedEmitter<GiveawayManagerEvents> {
     readonly client: Client;
-    readonly databaseAdapter: BaseDatabaseAdapter;
+    readonly databaseAdapter: A;
     readonly giveawayTimouts: Collection<string, { giveawayId: string; timeout: NodeJS.Timeout; }> = new Collection();
     readonly joinButtonCustomId: string = 'giveaway-join';
-    readonly onBeforeHandleInteraction: Exclude<GiveawayManagerOptions['onBeforeHandleInteraction'], undefined> = () => true;
+    readonly onBeforeHandleInteraction: Exclude<GiveawayManagerOptions<A>['onBeforeHandleInteraction'], undefined> = () => true;
 
     private _ready: boolean = false;
 
-    constructor(options: GiveawayManagerOptions) {
+    constructor(options: GiveawayManagerOptions<A>) {
         super();
 
         this.client = options.client;
@@ -135,6 +136,9 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
             guildId: message.guildId,
             channelId: message.channelId,
             messageId: message.id
+        }).catch(async err => {
+            message.delete().catch(() => null);
+            throw err;
         });
 
         this.createGiveawayTimeout(giveaway.id, endsAt);
@@ -293,13 +297,13 @@ export class GiveawayManager extends TypedEmitter<GiveawayManagerEvents> {
      * @returns The giveaway message if there's any
      */
     public async getGiveawayMessage(giveaway: Pick<IGiveaway, 'guildId'|'channelId'|'messageId'>): Promise<Message|undefined> {
-        const guild = this.client.guilds.cache.get(giveaway.guildId) ?? await this.client.guilds.fetch(giveaway.guildId).catch(() => null);
+        const guild = await resolveFromCachedCollection(giveaway.guildId, this.client.guilds).catch(() => null);
         if (!guild) return;
 
-        const channel = guild.channels.cache.get(giveaway.channelId) ?? await guild.channels.fetch(giveaway.channelId).catch(() => null);
+        const channel = await resolveFromCachedCollection(giveaway.channelId, guild.channels).catch(() => null);
         if (!channel || !channel.isTextBased()) return;
 
-        const message = channel.messages.cache.get(giveaway.messageId) ?? await channel.messages.fetch(giveaway.messageId).catch(() => null);
+        const message = await resolveFromCachedCollection(giveaway.messageId, channel.messages).catch(() => null);
         if (!message) return;
 
         return message;

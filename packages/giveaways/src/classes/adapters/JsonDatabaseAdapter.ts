@@ -2,7 +2,7 @@ import path from 'path';
 import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
 import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
 import { mkdir, readFile, writeFile } from 'fs/promises';
-import lodashFilter from 'lodash.filter';
+import { filter as lodashFilter } from 'lodash';
 import { existsSync } from 'fs';
 
 export interface JsonDatabaseSchema {
