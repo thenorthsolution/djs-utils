@@ -23,7 +23,7 @@
     },
     "dependencies": {
         "@discordjs/collection": "^1.5.1",
-        "axios": "^1.4.0",
+        "axios": "^1.5.0",
         "fallout-utility": "^2.7.1"
     },
     "publishConfig": {

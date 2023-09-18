@@ -36,11 +36,11 @@
         "@reciple/utils": "^7.1.2",
         "fallout-utility": "^2.7.1",
         "lodash": "^4.17.21",
-        "mongoose": "^7.4.5"
+        "mongoose": "^7.5.2"
     },
     "devDependencies": {
-        "@types/better-sqlite3": "^7.6.4",
-        "@types/lodash": "^4.14.197",
-        "better-sqlite3": "^8.5.2"
+        "@types/better-sqlite3": "^7.6.5",
+        "@types/lodash": "^4.14.198",
+        "better-sqlite3": "^8.6.0"
     }
 }
