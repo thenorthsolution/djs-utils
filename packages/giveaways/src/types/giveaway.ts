@@ -1,4 +1,6 @@
 import { GuildTextBasedChannel } from 'discord.js';
+import { BaseDatabaseAdapter } from '../classes/BaseDatabaseAdapter';
+import { GiveawayManager } from '../classes/GiveawayManager';
 
 export interface IGiveaway {
     id: string;
@@ -23,6 +25,12 @@ export interface IGiveawayEntry {
 }
 
 export type CreateGiveawayMessageOptions = Omit<IGiveaway, 'id'|'messageId'|'channelId'|'guildId'> & { id?: string; entries?: number; };
+
+export interface createGiveawayEmbedOptions<A extends BaseDatabaseAdapter = BaseDatabaseAdapter> extends CreateGiveawayMessageOptions {
+    manager: GiveawayManager<A>;
+    allEntries: IGiveawayEntry[];
+    allWinners: string[];
+}
 
 export interface CreateGiveawayOptions {
     channel: GuildTextBasedChannel;

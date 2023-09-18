@@ -1,5 +1,5 @@
-import { Awaitable, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, Channel, Client, Collection, ComponentType, EmbedBuilder, Guild, Interaction, Message, PartialMessage, inlineCode, time, userMention } from 'discord.js';
-import { CreateGiveawayMessageOptions, CreateGiveawayOptions, IGiveaway, IGiveawayEntry } from '../types/giveaway';
+import { APIEmbed, Awaitable, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, Channel, Client, Collection, ComponentType, EmbedBuilder, Guild, Interaction, JSONEncodable, Message, PartialMessage, inlineCode, time, userMention } from 'discord.js';
+import { CreateGiveawayMessageOptions, CreateGiveawayOptions, IGiveaway, IGiveawayEntry, createGiveawayEmbedOptions } from '../types/giveaway';
 import { TypedEmitter, getRandomKey } from 'fallout-utility';
 import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
 import { GiveawayError } from './GiveawayError';
@@ -19,6 +19,8 @@ export interface GiveawayManagerOptions<A extends BaseDatabaseAdapter = BaseData
     databaseAdapter: A;
     client: Client;
     joinButtonCustomId?: string;
+    joinButtonEmoji?: string;
+    createEmbed?: (giveaway: createGiveawayEmbedOptions) => Awaitable<JSONEncodable<APIEmbed>|APIEmbed>;
     onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
 }
 
@@ -27,6 +29,8 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
     readonly databaseAdapter: A;
     readonly giveawayTimouts: Collection<string, { giveawayId: string; timeout: NodeJS.Timeout; }> = new Collection();
     readonly joinButtonCustomId: string = 'giveaway-join';
+    readonly joinButtonEmoji: string = '🎉';
+    readonly createEmbed: Exclude<GiveawayManagerOptions<A>['createEmbed'], undefined> = GiveawayManager.defaultCreateEmbed;
     readonly onBeforeHandleInteraction: Exclude<GiveawayManagerOptions<A>['onBeforeHandleInteraction'], undefined> = () => true;
 
     private _ready: boolean = false;
@@ -37,6 +41,9 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
         this.client = options.client;
         this.databaseAdapter = options.databaseAdapter;
         this.joinButtonCustomId = options.joinButtonCustomId ?? this.joinButtonCustomId;
+        this.joinButtonEmoji = options.joinButtonEmoji ?? this.joinButtonEmoji;
+        this.createEmbed = options.createEmbed ?? this.createEmbed;
+        this.onBeforeHandleInteraction = options.onBeforeHandleInteraction ?? this.onBeforeHandleInteraction;
 
         this._err = this._err.bind(this);
         this._guildDelete = this._guildDelete.bind(this);
@@ -218,48 +225,34 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
      * @returns The giveaway message options
      */
     public async createGiveawayMessageOptions(giveaway: CreateGiveawayMessageOptions): Promise<BaseMessageOptions> {
-        const embed = new EmbedBuilder();
-
-        embed.setTitle(giveaway.name);
-        embed.setAuthor({ name: '🎉 Giveaway' });
-        embed.setColor(giveaway.ended ? 'DarkButNotBlack' : 'Blue');
-        embed.addFields({ name: `${inlineCode('⏲️')} End${giveaway.ended ? 'ed' : 's'}`, value: time(giveaway.endsAt, 'R') + (!giveaway.ended ? ` (${time(giveaway.endsAt)})` : '') });
-        embed.addFields({ name: `${inlineCode('👥')} Entries`, value: `${giveaway.entries ? inlineCode(giveaway.entries.toLocaleString('en-US')) : '**No entries**'}` });
-        embed.setFooter({ text: giveaway.ended ? 'Ended' : 'Active' });
-        embed.setTimestamp(giveaway?.endedAt ?? giveaway.createdAt);
-
-        let isDisabled: boolean = false;
-
-        const entries: IGiveawayEntry[] = giveaway.winnersEntryId.length && giveaway.id ? await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId: giveaway.id } }) : [];
-        const winners: string[] = giveaway.winnersEntryId.length
-            ? giveaway.winnersEntryId.map(id => entries.find(e => e.id === id)?.userId).filter((e): e is string => !!e)
+        const allEntries: IGiveawayEntry[] = giveaway.winnersEntryId.length && giveaway.id ? await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId: giveaway.id } }) : [];
+        const allWinners: string[] = giveaway.winnersEntryId.length
+            ? giveaway.winnersEntryId.map(id => allEntries.find(e => e.id === id)?.userId).filter((e): e is string => !!e)
             : [];
 
-        if (giveaway.ended) {
-            embed.addFields({
-                name: (inlineCode('🏆') + ' Winner') + (winners.length > 1 ? 's' : ''),
-                value: !winners.length ? inlineCode('none') : winners.map(id => `${userMention(id)} ${inlineCode(id)}`).join('\n')
-            });
-
-            isDisabled = true;
-        }
+        const embed = await Promise.resolve(this.createEmbed({
+            ...giveaway,
+            manager: this,
+            allEntries,
+            allWinners
+        }));
 
         return {
             content: giveaway.ended
-                ? winners.length
-                    ? inlineCode('🎉') + winners.map((id, i) => (i == winners.length && winners.length > 1 ? 'and ' : '') + userMention(id)).join(' ') + ' won the giveaway!'
+                ? allWinners.length
+                    ? inlineCode('🎉') + allWinners.map((id, i) => (i == allWinners.length && allWinners.length > 1 ? 'and ' : '') + userMention(id)).join(' ') + ' won the giveaway!'
                     : 'There is no winner for this giveaway'
                 : undefined,
-            embeds: [embed.toJSON()],
+            embeds: [embed],
             components: [
                 {
                     type: ComponentType.ActionRow,
                     components: [
                         new ButtonBuilder()
                             .setCustomId(this.joinButtonCustomId)
-                            .setDisabled(isDisabled)
+                            .setDisabled(giveaway.ended)
                             .setStyle(ButtonStyle.Primary)
-                            .setEmoji('🎉')
+                            .setEmoji(this.joinButtonEmoji)
                             .toJSON()
                     ]
                 }
@@ -461,7 +454,7 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
                 return;
             }
 
-            const entry = await this.toggleGiveawayEntry(giveaway.id, interaction.user.id).catch(() => undefined);
+            const entry = await this.toggleGiveawayEntry(giveaway.id, interaction.user.id).catch(err => { this.emit('error', err); });
             if (entry === undefined) {
                 await interaction.editReply(`${inlineCode('❌')} Unable to add/remove entry`);
                 return;
@@ -479,5 +472,26 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
 
     private _err(err: Error): void {
         this.emit('error', err);
+    }
+
+    public static defaultCreateEmbed<A extends BaseDatabaseAdapter = BaseDatabaseAdapter>(giveaway: createGiveawayEmbedOptions<A>): EmbedBuilder {
+        const embed = new EmbedBuilder();
+
+        embed.setTitle(giveaway.name);
+        embed.setAuthor({ name: '🎉 Giveaway' });
+        embed.setColor(giveaway.ended ? 'DarkButNotBlack' : 'Blue');
+        embed.addFields({ name: `${inlineCode('⏲️')} End${giveaway.ended ? 'ed' : 's'}`, value: time(giveaway.endsAt, 'R') + (!giveaway.ended ? ` (${time(giveaway.endsAt)})` : '') });
+        embed.addFields({ name: `${inlineCode('👥')} Entries`, value: `${giveaway.entries ? inlineCode(giveaway.entries.toLocaleString('en-US')) : '**No entries**'}` });
+        embed.setFooter({ text: giveaway.ended ? 'Ended' : 'Active' });
+        embed.setTimestamp(giveaway?.endedAt ?? giveaway.createdAt);
+
+        if (giveaway.ended) {
+            embed.addFields({
+                name: (inlineCode('🏆') + ' Winner') + (giveaway.allWinners.length > 1 ? 's' : ''),
+                value: !giveaway.allWinners.length ? inlineCode('none') : giveaway.allWinners.map(id => `${userMention(id)} ${inlineCode(id)}`).join('\n')
+            });
+        }
+
+        return embed;
     }
 }
