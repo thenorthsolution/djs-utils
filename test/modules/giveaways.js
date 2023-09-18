@@ -1,8 +1,10 @@
 import ms from "ms";
 import { RecipleClient, SlashCommandBuilder } from "reciple";
-import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, MongodbDatabaseAdapter, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // @ts-check
 
