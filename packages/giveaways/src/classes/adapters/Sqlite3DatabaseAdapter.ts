@@ -1,9 +1,9 @@
-import { count } from 'console';
 import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
 import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
 import { GiveawayManager } from '../GiveawayManager';
 import type Sqlite3 from 'better-sqlite3';
 import path from 'path';
+import { mkdir } from 'fs/promises';
 
 export interface Sqlite3DatabaseAdapterOptions {
     file?: string;
@@ -24,9 +24,10 @@ export interface RawSqlite3GiveawayEntry extends Omit<IGiveawayEntry, 'createdAt
 
 export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
     readonly file: string = path.join(process.cwd(), 'giveaways.db');
-    readonly database: Sqlite3.Database;
 
-    constructor(options?: Sqlite3DatabaseAdapterOptions) {
+    public database!: Sqlite3.Database;
+
+    constructor(private _options?: Sqlite3DatabaseAdapterOptions) {
         super();
 
         try {
@@ -35,11 +36,14 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             throw new Error('Unable to find required dependency: better-sqlite3');
         }
 
-        this.file = options?.file ?? this.file;
-        this.database = require('better-sqlite3')(this.file, options?.databaseOptions);
+        this.file = _options?.file ?? this.file;
     }
 
     public async start(manager: GiveawayManager<this>): Promise<void> {
+        await mkdir(path.dirname(this.file), { recursive: true });
+
+        this.database = require('better-sqlite3')(this.file, this._options?.databaseOptions);
+
         this.database.exec(`
             CREATE TABLE IF NOT EXISTS "Giveaways" (
                 "id" TEXT NOT NULL PRIMARY KEY,
@@ -91,7 +95,7 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         }
 
         if (typeof options?.count === 'number') {
-            query += `LIMIT ${count}`;
+            query += `LIMIT ${options.count}`;
         }
 
         return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveaway(g as RawSqlite3Giveaway));
@@ -200,7 +204,7 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         }
 
         if (typeof options?.count === 'number') {
-            query += `LIMIT ${count}`;
+            query += `LIMIT ${options.count}`;
         }
 
         return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveawayEntry(g as RawSqlite3GiveawayEntry));
