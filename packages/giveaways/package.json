@@ -33,7 +33,6 @@
         "discord.js"
     ],
     "dependencies": {
-        "@reciple/utils": "^7.1.2",
         "fallout-utility": "^2.7.1",
         "lodash": "^4.17.21",
         "mongoose": "^7.5.2"

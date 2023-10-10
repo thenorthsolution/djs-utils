@@ -4,7 +4,6 @@ import { TypedEmitter, getRandomKey } from 'fallout-utility';
 import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
 import { GiveawayError } from './GiveawayError';
 import { randomBytes } from 'crypto';
-import { resolveFromCachedCollection } from '@reciple/utils';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
@@ -290,13 +289,13 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
      * @returns The giveaway message if there's any
      */
     public async getGiveawayMessage(giveaway: Pick<IGiveaway, 'guildId'|'channelId'|'messageId'>): Promise<Message|undefined> {
-        const guild = await resolveFromCachedCollection(giveaway.guildId, this.client.guilds).catch(() => null);
+        const guild = await this.client.guilds.fetch(giveaway.guildId).catch(() => null);
         if (!guild) return;
 
-        const channel = await resolveFromCachedCollection(giveaway.channelId, guild.channels).catch(() => null);
+        const channel = await guild.channels.fetch(giveaway.channelId).catch(() => null);
         if (!channel || !channel.isTextBased()) return;
 
-        const message = await resolveFromCachedCollection(giveaway.messageId, channel.messages).catch(() => null);
+        const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
         if (!message) return;
 
         return message;
