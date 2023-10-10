@@ -1,7 +1,7 @@
 {
     "name": "@falloutstudios/djs-scam-links",
     "license": "GPL-3.0",
-    "version": "1.3.4",
+    "version": "1.3.5",
     "main": "./dist/index.js",
     "module": "./dist/esm.mjs",
     "types": "./dist/index.d.ts",
