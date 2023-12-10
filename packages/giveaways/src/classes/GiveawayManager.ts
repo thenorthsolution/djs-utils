@@ -484,7 +484,11 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
         embed.setFooter({ text: giveaway.ended ? 'Ended' : 'Active' });
         embed.setTimestamp(giveaway?.endedAt ?? giveaway.createdAt);
 
-        if (giveaway.ended) {
+        if (giveaway.authorId) embed.addFields({ name: `${inlineCode('👤')} Hosted by`, value: `${userMention(giveaway.authorId)}` });
+
+        if (!giveaway.ended) {
+            if (giveaway.winnerCount > 1) embed.addFields({ name: `${inlineCode('🎁')} Winners`, value: `${giveaway.winnerCount.toLocaleString('en-US')}` });
+        } else {
             embed.addFields({
                 name: (inlineCode('🏆') + ' Winner') + (giveaway.allWinners.length > 1 ? 's' : ''),
                 value: !giveaway.allWinners.length ? inlineCode('none') : giveaway.allWinners.map(id => `${userMention(id)} ${inlineCode(id)}`).join('\n')
