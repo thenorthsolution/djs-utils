@@ -1,14 +1,4 @@
 {
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": [
-          "build"
-        ]
-      }
-    }
-  },
   "targetDefaults": {
     "build": {
       "dependsOn": [
@@ -17,7 +7,8 @@
       "outputs": [
         "{projectRoot}/dist",
         "{projectRoot}/bin"
-      ]
+      ],
+      "cache": true
     }
   },
   "$schema": "./node_modules/nx/schemas/nx-schema.json",

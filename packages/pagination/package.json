@@ -1,47 +1,47 @@
 {
-    "name": "@falloutstudios/djs-pagination",
-    "description": "Discord.js v14 button and reaction pagination",
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "module": "./dist/esm.mjs",
-    "type": "commonjs",
-    "license": "GPL-3.0",
-    "version": "2.0.4",
-    "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_pagination.html",
-    "repository": {
-        "url": "https://github.com/FalloutStudios/djs.git",
-        "directory": "packages/pagination",
-        "type": "git"
-    },
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/esm.mjs",
-            "require": "./dist/index.js"
-        }
-    },
-    "scripts": {
-        "build": "npx tsc"
-    },
-    "peerDependencies": {
-        "discord.js": "^14.13.0"
-    },
-    "files": [
-        "dist",
-        "LICENSE",
-        "README.md"
-    ],
-    "publishConfig": {
-        "access": "public"
-    },
-    "keywords": [
-        "djs",
-        "discord.js",
-        "pagination",
-        "reaction",
-        "button"
-    ],
-    "dependencies": {
-        "fallout-utility": "^2.7.1"
+  "name": "@falloutstudios/djs-pagination",
+  "description": "Discord.js v14 button and reaction pagination",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/esm.mjs",
+  "type": "commonjs",
+  "license": "GPL-3.0",
+  "version": "2.0.4",
+  "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_pagination.html",
+  "repository": {
+    "url": "https://github.com/FalloutStudios/djs.git",
+    "directory": "packages/pagination",
+    "type": "git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm.mjs",
+      "require": "./dist/index.js"
     }
+  },
+  "scripts": {
+    "build": "npx tsc"
+  },
+  "peerDependencies": {
+    "discord.js": "^14.14.1"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "djs",
+    "discord.js",
+    "pagination",
+    "reaction",
+    "button"
+  ],
+  "dependencies": {
+    "fallout-utility": "^2.8.0"
+  }
 }

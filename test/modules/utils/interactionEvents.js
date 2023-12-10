@@ -1,3 +1,3 @@
-import interactionEvents from 'reciple-interaction-events';
+import { InteractionEventManager } from 'reciple-interaction-events';
 
-export default interactionEvents;
+export default new InteractionEventManager();

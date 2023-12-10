@@ -1,3 +1,3 @@
-import anticrash from 'reciple-anticrash';
+import { RecipleAnticrash } from 'reciple-anticrash';
 
-export default anticrash;
+export default new RecipleAnticrash();
