@@ -146,7 +146,7 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
             guildId: data.guild_id,
             channelId: data.channel_id,
             messageId: data.message_id,
-            authorId: data.author_id,
+            authorId: data.author_id ?? undefined,
             name: data.name,
             winnerCount: data.winner_count,
             endsAt: data.ends_at,
