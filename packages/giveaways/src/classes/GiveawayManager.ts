@@ -437,7 +437,7 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
     private async _interactionCreate(interaction: Interaction): Promise<void> {
         if (!interaction.isButton() || interaction.customId !== this.joinButtonCustomId) return;
 
-        const deffered = await interaction.deferReply({ ephemeral: true }).catch(err => this.emit('error', err));
+        const deffered = interaction.replied || interaction.deferred || await interaction.deferReply({ ephemeral: true }).catch(err => this.emit('error', err));
         if (!deffered) return;
 
         try {
