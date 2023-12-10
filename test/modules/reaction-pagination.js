@@ -4,13 +4,13 @@ import { pages } from "./button-pagination.js";
 import { ReactionPaginationBuilder } from "@falloutstudios/djs-pagination";
 
 /**
- * @type {import("reciple").RecipleModuleScript}
+ * @type {import("reciple").RecipleModuleData}
  */
 export default {
-    versions: ['^7'],
+    versions: ['^8'],
     commands: [
         {
-            commandType: CommandType.MessageCommand,
+            command_type: CommandType.MessageCommand,
             name: 'pagination',
             description: 'Reaction pagination',
             async execute({ message }) {

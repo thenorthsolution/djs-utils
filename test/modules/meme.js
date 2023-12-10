@@ -4,13 +4,13 @@ import { ButtonStyle, ComponentType, EmbedBuilder } from "discord.js";
 import { CommandType } from "reciple";
 
 /**
- * @type {import("reciple").RecipleModuleScript}
+ * @type {import("reciple").RecipleModuleData}
  */
 export default {
-    versions: ['^7'],
+    versions: ['^8'],
     commands: [
         {
-            commandType: CommandType.SlashCommand,
+            command_type: CommandType.SlashCommand,
             name: 'meme',
             description: 'Some random memes from the internet',
             execute: async ({ interaction }) => {

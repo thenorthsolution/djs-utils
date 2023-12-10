@@ -1,5 +1,5 @@
 import ms from "ms";
-import { RecipleClient, SlashCommandBuilder } from "reciple";
+import { SlashCommandBuilder } from "reciple";
 import { GiveawayManager, MongodbDatabaseAdapter, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 // @ts-check
 
 export class Giveaways {
-    versions = '^7';
+    versions = '^8';
     /**
      * @type {GiveawayManager<MongodbDatabaseAdapter>|null}
      */
@@ -99,9 +99,9 @@ export class Giveaways {
 
     /**
      * 
-     * @param {RecipleClient} client
+     * @param {import("reciple").RecipleModuleStartData} param0
      */
-    onStart(client) {
+    onStart({ client }) {
         this.giveaways = new GiveawayManager({
             client,
             databaseAdapter: new Sqlite3DatabaseAdapter({
@@ -114,9 +114,9 @@ export class Giveaways {
 
     /**
      * 
-     * @param {RecipleClient} client
+     * @param {import("reciple").RecipleModuleLoadData} param0
      */
-    async onLoad(client) {
+    async onLoad({ client }) {
         this.giveaways.on('error', console.log);
 
         await this.giveaways.start();

@@ -3,17 +3,17 @@ import { DiscordScamLinks } from '@falloutstudios/djs-scam-links';
 import { codeBlock } from 'discord.js';
 
 /**
- * @type {import('reciple').RecipleModuleScript & { links: DiscordScamLinks }}
+ * @type {import('reciple').RecipleModuleData & { links: DiscordScamLinks }}
  */
 export default {
-    versions: ['^7'],
+    versions: ['^8'],
     links: new DiscordScamLinks(),
 
-    async onStart(client) {
+    async onStart({ client }) {
         return true;
     },
 
-    async onLoad(client) {
+    async onLoad({ client }) {
         client.on('messageCreate', async message => {
             if (message.author.bot || message.author.system || !message.content) return;
 

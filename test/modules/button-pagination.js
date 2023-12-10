@@ -10,13 +10,13 @@ import { CommandType } from "reciple";
 export const pages = ['Page1', new EmbedBuilder().setTitle('Page2').setColor('Random'), { content: 'Page3', embeds: [{ title: 'This is page 3' }] }];
 
 /**
- * @type {import("reciple").RecipleModuleScript}
+ * @type {import("reciple").RecipleModuleData}
  */
 export default {
-    versions: ['^7'],
+    versions: ['^8'],
     commands: [
         {
-            commandType: CommandType.SlashCommand,
+            command_type: CommandType.SlashCommand,
             name: 'pagination',
             description: 'Button pagination testing',
             async execute({ interaction }) {
@@ -58,7 +58,7 @@ export default {
             }
         }
     ],
-    async onStart(client) {
+    async onStart() {
         return true;
     }
 }
