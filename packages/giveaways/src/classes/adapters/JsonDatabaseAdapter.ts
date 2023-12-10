@@ -90,6 +90,7 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
         const giveaway = this.giveaways.find(g => g.id === data.id);
         if (!giveaway) throw new Error('Unable to create new giveaway! Json file did not save');
 
+        this.emit('giveawayCreate', giveaway);
         return giveaway;
     }
 
@@ -105,6 +106,8 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
 
         this._raw.giveaways[giveawayIndex] = newGiveaway;
         await this.saveJson();
+
+        this.emit('giveawayUpdate', giveaway, newGiveaway);
 
         return JsonDatabaseAdapter.parseGiveaway(newGiveaway);
     }
@@ -123,6 +126,8 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
         this._raw.entries = this._raw.entries.filter(e => !giveaways.some(d => d.id === e.giveawayId));
 
         await this.saveJson();
+
+        giveaways.forEach(g => this.emit('giveawayDelete', g));
 
         return findFirst ? giveaways[0] : giveaways;
     }
@@ -150,6 +155,8 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
         const entry = this.entries.find(e => e.id === data.id);
         if (!entry) throw new Error('Unable to create new entry! Json file did not save');
 
+        this.emit('giveawayEntryCreate', entry);
+
         return entry;
     }
 
@@ -166,6 +173,8 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
         this._raw.entries[entryIndex] = newEntry;
         await this.saveJson();
 
+        this.emit('giveawayEntryUpdate', entry, newEntry);
+
         return JsonDatabaseAdapter.parseGiveawayEntry(newEntry);
     }
 
@@ -181,6 +190,9 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
 
         this._raw.entries = this._raw.entries.filter(e => !entries.some(d => d.id === e.id));
         await this.saveJson();
+
+        entries.forEach(e => this.emit('giveawayEntryDelete', e));
+
         return findFirst ? entries[0] : entries;
     }
 

@@ -56,14 +56,21 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
 
     public async createGiveaway(data: IGiveaway): Promise<IGiveaway> {
         const newData = await this.giveawaysModel.create(MongodbDatabaseAdapter.parseGiveawayObject(data));
+        this.emit('giveawayCreate', data);
         return MongodbDatabaseAdapter.parseGiveawayDocument(newData);
     }
 
     public async updateGiveaway(giveawayId: string, data: Partial<IGiveaway>): Promise<IGiveaway> {
+        const giveaway = await this.fetchGiveaway(giveawayId);
+        if (!giveaway) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
+
         const updated = await this.giveawaysModel.updateOne({ id: giveawayId }, MongodbDatabaseAdapter.parseGiveawayObject(data));
         if (!updated.modifiedCount) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
 
-        return (await this.fetchGiveaway(giveawayId))!;
+        const newGiveaway = (await this.fetchGiveaway(giveawayId))!;
+        this.emit('giveawayUpdate', giveaway, newGiveaway);
+
+        return newGiveaway;
     }
 
     public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
@@ -83,6 +90,8 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
         await this.giveawaysModel.deleteMany({
             $or: giveaways.map(g => ({ id: g.id }))
         });
+
+        giveaways.forEach(g => this.emit('giveawayDelete', g));
 
         return findFirst ? giveaways[0] : giveaways;
     }
@@ -109,14 +118,21 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
         if (!giveaway) throw new Error(`Unable to create new giveaway`);
 
         const newData = await this.giveawayEntriesModel.create(MongodbDatabaseAdapter.parseGiveawayEntryObject(data));
+        this.emit('giveawayEntryCreate', data);
         return MongodbDatabaseAdapter.parseGiveawayEntryDocument(newData);
     }
 
     public async updateGiveawayEntry(entryId: string, data: Partial<IGiveawayEntry>): Promise<IGiveawayEntry> {
+        const entry = await this.fetchGiveawayEntry(entryId);
+        if (!entry) throw new Error(`Unable to update giveaway entry! Entry id not found: ${entryId}`);
+
         const updated = await this.giveawayEntriesModel.updateOne({ id: entryId }, MongodbDatabaseAdapter.parseGiveawayEntryObject(data));
         if (!updated.modifiedCount) throw new Error(`Unable to update giveaway entry! Entry id not found: ${entryId}`);
 
-        return (await this.fetchGiveawayEntry(entryId))!;
+        const newEntry = (await this.fetchGiveawayEntry(entryId))!;
+        this.emit('giveawayEntryUpdate', entry, newEntry);
+
+        return newEntry;
     }
 
     public async deleteGiveawayEntry(giveawayId: string): Promise<IGiveawayEntry|undefined>;
@@ -132,6 +148,8 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
         await this.giveawayEntriesModel.deleteMany({
             $or: entries.map(e => ({ id: e.id }))
         });
+
+        entries.forEach(e => this.emit('giveawayEntryDelete', e));
 
         return findFirst ? entries[0] : entries;
     }

@@ -9,7 +9,6 @@ export interface BaseDatabaseAdapterEvents {
     giveawayEntryCreate: [entry: IGiveawayEntry];
     giveawayEntryUpdate: [oldEntry: IGiveawayEntry, newEntry: IGiveawayEntry];
     giveawayEntryDelete: [entry: IGiveawayEntry];
-    error: [error: Error];
 }
 
 export abstract class BaseDatabaseAdapter<Events extends BaseDatabaseAdapterEvents = BaseDatabaseAdapterEvents> extends TypedEmitter<Events> {

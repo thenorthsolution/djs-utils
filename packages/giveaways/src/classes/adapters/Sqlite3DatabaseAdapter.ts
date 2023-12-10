@@ -121,6 +121,9 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             data.endedAt?.toISOString() ?? null,
             JSON.stringify(data.winnersEntryId)
         );
+
+        this.emit('giveawayCreate', data);
+
         return data;
     }
 
@@ -157,6 +160,8 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         const updated = this.database.prepare(query).run(...values).changes;
         if (!updated) throw new Error('Unable to update giveaway! No changes found');
 
+        this.emit('giveawayUpdate', giveaway, newGiveaway);
+
         return newGiveaway;
     }
 
@@ -182,6 +187,8 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         }
 
         this.database.prepare(query).run(...values);
+        giveaways.forEach(g => this.emit('giveawayDelete', g));
+
         return findFirst ? giveaways[0] : giveaways;
     }
 
@@ -225,6 +232,9 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             data.userId,
             data.createdAt.toISOString()
         );
+
+        this.emit('giveawayEntryCreate', data);
+
         return data;
     }
 
@@ -261,6 +271,8 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         const updated = this.database.prepare(query).run(...values).changes;
         if (!updated) throw new Error('Unable to update entry! No changes found');
 
+        this.emit('giveawayEntryUpdate', entry, newEntry);
+
         return newEntry;
     }
 
@@ -286,6 +298,8 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         }
 
         this.database.prepare(query).run(...values);
+        entries.forEach(e => this.emit('giveawayEntryDelete', e));
+
         return findFirst ? entries[0] : entries;
     }
 
