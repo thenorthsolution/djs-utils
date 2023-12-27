@@ -11,7 +11,7 @@ export function resolveActionRowBuilder(actionRow: ActionRowResolvable): ActionR
     return new ActionRowBuilder(actionRow);
 }
 
-export function disabledComponents(components: ActionRowResolvable[]): ActionRowResolvable[] {
+export function disableComponents(components: ActionRowResolvable[]): ActionRowResolvable[] {
     return components.map(a => {
         const actionRow = resolveActionRowBuilder(a).toJSON();
 
