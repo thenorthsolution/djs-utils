@@ -1,12 +1,12 @@
 import { Awaitable, If, RestOrArray, TypedEmitter, normalizeArray, replaceAll } from 'fallout-utility';
-import { Collection } from '@discordjs/collection';
 import { UrlJsonContent, UrlJsonContentOptions } from './UrlJsonContent';
+import { Collection } from '@discordjs/collection';
 
 export interface DiscordScamLinksOptions {
     /**
      * Fetch domain arrays from url
      */
-    fetchJsonFromUrl: string|(string|{ url: string; dataParser: (data: any) => Awaitable<string[]>; })[];
+    fetchJsonFromUrl: string|(string|{ url: string; dataParser: (data: Response) => Awaitable<string[]>; })[];
     /**
      * Max cached domains age
      */
@@ -14,7 +14,7 @@ export interface DiscordScamLinksOptions {
     /**
      * Refresh cache interval
      */
-    refreshCacheEveryMs: number;
+    refreshCacheEveryMs: number|null;
 }
 
 export interface DiscordScamLinksEvents {
@@ -45,8 +45,8 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
     constructor(options: Partial<DiscordScamLinksOptions> = {
         fetchJsonFromUrl: [
             {
-                url: 'https://raw.githubusercontent.com/nikolaischunk/discord-phishing-links/main/domain-list.json',
-                dataParser: data => data.domains
+                url: 'https://raw.githubusercontent.com/Discord-AntiScam/scam-links/main/list.json',
+                dataParser: data => data.json()
             }
         ],
     }) {
@@ -74,7 +74,7 @@ export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmit
             return cached;
         }));
 
-        if (!this._refreshCacheInterval) {
+        if (!this._refreshCacheInterval && this._options?.refreshCacheEveryMs !== null) {
             this._refreshCacheInterval = setInterval(async () => this.refreshDomains(true), this._options?.refreshCacheEveryMs ?? 60000 * 5);
         }
 

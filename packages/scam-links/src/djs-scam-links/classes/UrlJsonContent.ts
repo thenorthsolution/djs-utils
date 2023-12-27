@@ -1,15 +1,14 @@
-import axios from 'axios';
-import { randomUUID } from 'crypto';
-import { Awaitable, If } from 'fallout-utility';
 import { DiscordScamLinks } from './DiscordScamLinks';
+import { Awaitable, If } from 'fallout-utility';
+import { randomUUID } from 'crypto';
 
 export interface UrlJsonContentOptions<ResponseData = string[]> {
     djsScamLinks?: DiscordScamLinks;
     /**
      * Axios fetch options
      */
-    fetchOptions?: Omit<axios.AxiosRequestConfig<string[]>, 'url'|'responseType'>;
-    dataParser?: (data: ResponseData) => Awaitable<string[]>;
+    fetchOptions?: RequestInit;
+    dataParser?: (data: Response) => Awaitable<string[]>;
 }
 
 export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = boolean> {
@@ -19,8 +18,8 @@ export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = b
     readonly djsScamLinks?: DiscordScamLinks;
     readonly id: string = randomUUID();
     readonly url: string;
-    readonly fetchOptions?: Omit<axios.AxiosRequestConfig<string[]>, 'url'|'responseType'>;
-    readonly dataParser?: (data: ResponseData) => Awaitable<string[]>;
+    readonly fetchOptions?: RequestInit;
+    readonly dataParser?: (data: Response) => Awaitable<string[]>;
 
     get content() { return this._content as If<Fetched, string[]> }
     get lastFetch() { return this._lastFetch as If<Fetched, Date>; }
@@ -36,8 +35,8 @@ export class UrlJsonContent<ResponseData = string[], Fetched extends boolean = b
      * Fetch domains from url
      */
     public async fetch(): Promise<string[]> {
-        const data = await axios<ResponseData>({ ...this.fetchOptions, url: this.url, responseType: 'json' })
-            .then(async res => typeof this.dataParser === 'function' ? await this.dataParser(res.data) : res.data);
+        const data = await fetch(this.url, this.fetchOptions)
+            .then(async res => typeof this.dataParser === 'function' ? await this.dataParser(res) : res.json());
 
         this._content = data && Array.isArray(data) ? data : null;
 
