@@ -11,7 +11,7 @@
     "@falloutstudios/djs-scam-links": "^1.3.2",
     "discord.js": "^14.14.1",
     "ms": "^2.1.3",
-    "reciple": "^8.3.0",
+    "reciple": "^8.3.1",
     "reciple-anticrash": "^2.1.1",
     "reciple-interaction-events": "^2.1.1",
     "reciple-registry-cache": "^2.1.1"
