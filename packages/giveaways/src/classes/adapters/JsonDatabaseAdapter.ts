@@ -59,7 +59,6 @@ export class JSONDatabaseAdapter extends BaseGiveawayDatabaseAdapter {
     public async saveJson(): Promise<JSONDatabaseAdapterSchema> {
         await mkdir(path.dirname(this.file), { recursive: true });
         await writeFile(this.file, this.parser.stringify(this._raw));
-
         return this._raw;
     }
 

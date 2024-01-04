@@ -58,3 +58,15 @@ export interface GiveawayManagerCreateGiveawayOptions {
     winnerCount?: number;
     riggedUsersId?: string[];
 }
+
+export interface GiveawayManagerSelectGiveawayEntriesOptions {
+    winnerCount?: number;
+    countRiggedUsers?: boolean;
+    rigged?: boolean;
+    ignoredUsersId?: string[];
+}
+
+export interface GiveawayManagerRerollGiveawayOptions {
+    winnerCount?: number;
+    ignoredUsersId?: string[];
+}

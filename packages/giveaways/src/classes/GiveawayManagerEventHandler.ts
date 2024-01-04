@@ -2,7 +2,13 @@ import { Channel, Collection, Guild, Interaction, Message, PartialMessage, inlin
 import { GiveawayManager } from './GiveawayManager';
 
 export class GiveawayManagerEventHandler {
-    constructor(readonly manager: GiveawayManager) {}
+    constructor(readonly manager: GiveawayManager) {
+        this.guildDelete = this.guildDelete.bind(this);
+        this.channelDelete = this.channelDelete.bind(this);
+        this.messageDelete = this.messageDelete.bind(this);
+        this.messageDeleteBulk = this.messageDeleteBulk.bind(this);
+        this.interactionCreate = this.interactionCreate.bind(this);
+    }
 
     async guildDelete(guild: Guild) {
         const giveaways = await this.manager.database.fetchGiveaways({ filter: { guildId: guild.id } });
@@ -22,7 +28,7 @@ export class GiveawayManagerEventHandler {
         }
     }
 
-    async messageDelete(message: Message) {
+    async messageDelete(message: Message|PartialMessage) {
         if (!message.inGuild()) return;
 
         const giveaway = (await this.manager.database.fetchGiveaways({ filter: { messageId: message.id } }))[0];

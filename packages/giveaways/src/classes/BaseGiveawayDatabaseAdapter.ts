@@ -23,6 +23,8 @@ export abstract class BaseGiveawayDatabaseAdapter extends TypedEmitter<BaseGivea
         this.manager = manager;
     }
 
+    public async destroy(): Promise<void> {}
+
     public abstract fetchGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]>;
     public abstract updateGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>, data: Partial<RawGiveaway>): Promise<RawGiveaway[]>;
     public abstract deleteGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]>;

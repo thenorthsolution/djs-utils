@@ -1,4 +1,4 @@
-import { GiveawayManagerButtonOptions, GiveawayManagerCreateGiveawayEmbedOptions, GiveawayManagerCreateGiveawayMessageOptions, GiveawayManagerCreateGiveawayOptions, GiveawayManagerEntriesData, RawGiveaway, RawGiveawayEntry } from '../types/structures';
+import { GiveawayManagerButtonOptions, GiveawayManagerCreateGiveawayEmbedOptions, GiveawayManagerCreateGiveawayMessageOptions, GiveawayManagerCreateGiveawayOptions, GiveawayManagerEntriesData, GiveawayManagerSelectGiveawayEntriesOptions, RawGiveaway, RawGiveawayEntry } from '../types/structures';
 import { BaseGiveawayDatabaseAdapter } from './BaseGiveawayDatabaseAdapter';
 import { Awaitable, JSONEncodable, TypedEmitter } from 'fallout-utility';
 import { APIEmbed, BaseMessageOptions, ButtonInteraction, ButtonStyle, Client, Collection, ComponentType, EmbedBuilder, GuildTextBasedChannel, InteractionButtonComponentData, Message, inlineCode, time, userMention } from 'discord.js';
@@ -67,6 +67,20 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         return embed;
     }
 
+    public static async selectWinnerEntries(entries: RawGiveawayEntry[], needed: number): Promise<RawGiveawayEntry[]> {
+        const shuffled = entries.sort(() => Math.random() - 0.5);
+        const winners: RawGiveawayEntry[] = [];
+
+        for (const entry of shuffled) {
+            if (winners.some(w => w.userId === entry.userId)) continue;
+
+            winners.push(entry);
+            if (winners.length >= needed) break;
+        }
+
+        return winners;
+    }
+
     public readonly database: Database;
     public readonly client: Client;
     public readonly joinButton: GiveawayManagerButtonOptions = GiveawayManager.joinButton;
@@ -75,7 +89,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
 
     public createEmbed: (data: GiveawayManagerCreateGiveawayEmbedOptions) => Awaitable<JSONEncodable<APIEmbed>|APIEmbed> = GiveawayManager.createEmbed;
     public onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
-    public selectWinnerEntries?: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]>;
+    public selectWinnerEntries: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]> = GiveawayManager.selectWinnerEntries;
 
     public ready: boolean = false;
 
@@ -90,13 +104,20 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         this.maxTimeoutMs = options.maxTimeoutMs ?? this.maxTimeoutMs;
         this.createEmbed = options.createEmbed ?? GiveawayManager.createEmbed;
         this.onBeforeHandleInteraction = options.onBeforeHandleInteraction;
+        this.selectWinnerEntries = options.selectWinnerEntries ?? GiveawayManager.selectWinnerEntries;
     }
 
     public async start(): Promise<void> {
         if (!this.client.isReady()) throw new GiveawayManagerError('Discord.js client is not yet ready or logged in');
+        if (this.ready) throw new GiveawayManagerError('Giveaway manager is already ready');
 
         await this.database.start(this);
         this.database.on('error', this._err);
+        this.client.on('guildDelete', this.eventHandler.guildDelete);
+        this.client.on('channelDelete', this.eventHandler.channelDelete);
+        this.client.on('messageDelete', this.eventHandler.messageDelete);
+        this.client.on('messageDeleteBulk', this.eventHandler.messageDeleteBulk);
+        this.client.on('interactionCreate', this.eventHandler.interactionCreate);
 
         this.ready = true;
 
@@ -105,6 +126,26 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         for (const giveaway of giveaways) {
             await this.createGiveawayTimeout(giveaway.id, giveaway.dueDate).catch(err => this.emit(err));
         }
+    }
+
+    public async destroy(): Promise<void> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        this.database.removeListener('error', this._err);
+        this.client.removeListener('guildDelete', this.eventHandler.guildDelete);
+        this.client.removeListener('channelDelete', this.eventHandler.channelDelete);
+        this.client.removeListener('messageDelete', this.eventHandler.messageDelete);
+        this.client.removeListener('messageDeleteBulk', this.eventHandler.messageDeleteBulk);
+        this.client.removeListener('interactionCreate', this.eventHandler.interactionCreate);
+
+        await this.database.destroy();
+
+        for (const giveaway of this.giveawayTimeouts.values()) {
+            clearTimeout(giveaway.timeout);
+        }
+
+        this.giveawayTimeouts.clear();
+        this.ready = false;
     }
 
     public async createGiveaway(options: GiveawayManagerCreateGiveawayOptions): Promise<RawGiveaway> {
@@ -199,7 +240,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
 
         const entries: GiveawayManagerEntriesData = cancel !== true
-            ? await this.selectGiveawayEntries(id, giveaway.winnerCount)
+            ? await this.selectGiveawayEntries(id)
             : {
                 allEntries: await this.database.fetchGiveawayEntries({ filter: { giveawayId: id } }),
                 riggedUsersId: giveaway.riggedUsersId ?? [],
@@ -317,31 +358,26 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         };
     }
 
-    public async selectGiveawayEntries(giveawayId: string, winnerCount?: number): Promise<GiveawayManagerEntriesData> {
+    public async selectGiveawayEntries(giveawayId: string, options?: GiveawayManagerSelectGiveawayEntriesOptions): Promise<GiveawayManagerEntriesData> {
         if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
 
         const giveaway = (await this.database.fetchGiveaways({ filter: { id: giveawayId } }))[0];
         if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
 
-        winnerCount ??= giveaway.winnerCount;
+        let winnerCount = options?.winnerCount ?? giveaway.winnerCount;
 
         const allEntries = await this.database.fetchGiveawayEntries({ filter: { giveawayId } });
         const riggedUsersId = giveaway.riggedUsersId ?? [];
-        const filteredEntries = allEntries.filter(entry => !riggedUsersId.includes(entry.userId));
+        const filteredEntries = allEntries.filter(entry => !riggedUsersId.includes(entry.userId) && !options?.ignoredUsersId?.includes(entry.userId));
 
         let winnersUserId: string[] = [];
 
-        winnersUserId.push(...riggedUsersId);
+        if (options?.rigged !== false) winnersUserId.push(...riggedUsersId);
 
-        if (winnersUserId.length < winnerCount) {
-            const selected = this.selectWinnerEntries
-                ? await Promise.resolve(this.selectWinnerEntries(filteredEntries, winnerCount - winnersUserId.length))
-                : filteredEntries.toSorted(() => Math.random() - 0.5).slice(0, winnerCount - winnersUserId.length);
-
+        if (winnersUserId.length < winnerCount || options?.countRiggedUsers === false) {
+            const selected = await Promise.resolve(this.selectWinnerEntries(filteredEntries, winnerCount - winnersUserId.length));
             winnersUserId.push(...selected.map(entry => entry.userId));
         }
-
-        if (winnersUserId.length > winnerCount) winnersUserId = winnersUserId.slice(0, winnerCount);
 
         const selectedEntries = filteredEntries.filter(entry => winnersUserId.includes(entry.userId));
 
