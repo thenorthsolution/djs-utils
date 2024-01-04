@@ -1,57 +1,54 @@
-import path from 'path';
-import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
-import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
+import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions } from '../BaseGiveawayDatabaseAdapter';
+import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { filter as lodashFilter } from 'lodash';
 import { existsSync } from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
 
-export interface JsonDatabaseSchema {
-    giveaways: RawJsonGiveaway[];
-    entries: RawJsonGiveawayEntry[];
-};
-
-export interface RawJsonGiveaway extends Omit<IGiveaway, 'endsAt'|'createdAt'|'endedAt'> {
-    endsAt: string;
-    createdAt: string;
-    endedAt: string|null;
+export interface JSONDatabaseAdapterSchema {
+    giveaways: RawJSONGiveaway[];
+    entries: RawJSONGiveawayEntry[];
 }
 
-export interface RawJsonGiveawayEntry extends Omit<IGiveawayEntry, 'createdAt'> {
+export interface RawJSONGiveaway extends Omit<RawGiveaway, 'createdAt'|'dueDate'> {
+    createdAt: string;
+    dueDate: string;
+}
+
+export interface RawJSONGiveawayEntry extends Omit<RawGiveawayEntry, 'createdAt'> {
     createdAt: string;
 }
 
-export interface JsonDatabaseAdapterOptions {
+export interface JSONDatabaseAdapterOptions {
     file?: string;
     parser?: {
-        parse(data: string): JsonDatabaseSchema;
-        stringify(data: JsonDatabaseSchema): string;
+        parse(data: string): JSONDatabaseAdapterSchema;
+        stringify(data: JSONDatabaseAdapterSchema): string;
     };
 }
 
-export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
-    private _raw: JsonDatabaseSchema = { giveaways: [], entries: [] };
+export class JSONDatabaseAdapter extends BaseGiveawayDatabaseAdapter {
+    private _raw: JSONDatabaseAdapterSchema = { giveaways: [], entries: [] };
 
     readonly file: string = path.join(process.cwd(), 'giveaways.json');
-    readonly parser: Exclude<JsonDatabaseAdapterOptions['parser'], undefined> = JSON;
+    readonly parser: Exclude<JSONDatabaseAdapterOptions['parser'], undefined> = JSON;
 
     get data() {
-        return {
-            giveaways: this._raw.giveaways.map(g => JsonDatabaseAdapter.parseGiveaway(g)),
-            entries: this._raw.entries.map(e => JsonDatabaseAdapter.parseGiveawayEntry(e))
-        };
+        return { giveaways: this.giveaways, entries: this.entries };
     };
 
-    get giveaways() { return this.data.giveaways; }
-    get entries() { return this.data.entries; }
+    get giveaways() { return this._raw.giveaways.map(g => JSONDatabaseAdapter.parseGiveaway(g)); }
+    get entries() { return this._raw.entries.map(e => JSONDatabaseAdapter.parseGiveawayEntry(e)); }
 
-    constructor(options?: JsonDatabaseAdapterOptions) {
+    constructor(options?: JSONDatabaseAdapterOptions) {
         super();
 
         this.file = options?.file ? path.resolve(options.file) : this.file;
         this.parser = options?.parser ? options.parser : this.parser;
     }
 
-    public async fetchJson(): Promise<JsonDatabaseSchema> {
+    public async fetchJson(): Promise<JSONDatabaseAdapterSchema> {
         if (!existsSync(this.file)) return this.saveJson();
 
         const data = this.parser.parse(await readFile(this.file, 'utf-8'));
@@ -59,159 +56,137 @@ export class JsonDatabaseAdapter extends BaseDatabaseAdapter {
         return data;
     }
 
-    public async saveJson(data?: JsonDatabaseSchema): Promise<JsonDatabaseSchema> {
-        data ??= this._raw;
-
+    public async saveJson(): Promise<JSONDatabaseAdapterSchema> {
         await mkdir(path.dirname(this.file), { recursive: true });
-        await writeFile(this.file, this.parser.stringify(data));
+        await writeFile(this.file, this.parser.stringify(this._raw));
 
-        return data;
+        return this._raw;
     }
 
-    public async fetchGiveaways(options?: { filter?: Partial<IGiveaway>, count?: number }): Promise<IGiveaway[]> {
+    public async fetchGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
         await this.fetchJson();
-        return (options?.filter ? lodashFilter(this.giveaways, options.filter) : this.giveaways).splice(0, options?.count ?? Infinity);
+        return (filter?.filter ? lodashFilter(this.giveaways, filter.filter) : this.giveaways).splice(0, filter?.count ?? Infinity);
     }
 
-    public async fetchGiveaway(giveawayId: string): Promise<IGiveaway|undefined> {
-        await this.fetchJson();
-        return this.giveaways.find(g => g.id === giveawayId);
-    }
+    public async updateGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>, data: Partial<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        const newGiveaways = giveaways.map(giveaway => ({ ...giveaway, ...data }));
 
-    public async createGiveaway(data: IGiveaway): Promise<IGiveaway> {
-        await this.fetchJson();
+        for (const index in newGiveaways) {
+            const newGiveaway = newGiveaways.at(Number(index));
+            const oldGiveaway = giveaways.at(Number(index));
+            if (!newGiveaway || !oldGiveaway) continue;
 
-        const isExists = this.giveaways.some(g => g.id === data.id || g.messageId === data.messageId);
-        if (isExists) throw new Error('Unable to create new giveaway! given id or messageId is already used');
+            const databaseIndex = this._raw.giveaways.findIndex(g => g.id === oldGiveaway.id);
+            this._raw.giveaways[databaseIndex] = JSONDatabaseAdapter.parseGiveaway(newGiveaway);
 
-        this._raw.giveaways.push(JsonDatabaseAdapter.parseGiveaway(data));
+            this.emit('giveawayUpdate', oldGiveaway, newGiveaway);
+        }
+
         await this.saveJson();
 
-        const giveaway = this.giveaways.find(g => g.id === data.id);
-        if (!giveaway) throw new Error('Unable to create new giveaway! Json file did not save');
+        return newGiveaways;
+    }
 
+    public async deleteGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        const entries =  this._raw.entries.filter(e => giveaways.some(d => d.id === e.giveawayId));
+
+        this._raw.giveaways = this._raw.giveaways.filter(g => !giveaways.some(d => d.id === g.id));
+        this._raw.entries = this._raw.entries.filter(e => !entries.some(d => d.id === e.id));
+
+        for (const giveaway of giveaways) {
+            this.emit('giveawayDelete', giveaway);
+
+            for (const entry of entries.filter(e => e.giveawayId === giveaway.id)) {
+                this.emit('giveawayEntryDelete', entry);
+            }
+        }
+
+        await this.saveJson();
+
+        return giveaways;
+    }
+
+    public async createGiveaway(data: Omit<RawGiveaway, 'id'>): Promise<RawGiveaway> {
+        await this.fetchJson();
+
+        const id = data.messageId;
+        const giveaway: RawGiveaway = { id, ...data };
+
+        this._raw.giveaways.push(JSONDatabaseAdapter.parseGiveaway(giveaway));
         this.emit('giveawayCreate', giveaway);
+
+        await this.saveJson();
+
         return giveaway;
     }
 
-    public async updateGiveaway(giveawayId: string, data: Partial<IGiveaway>): Promise<IGiveaway> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
-
-        const giveawayIndex = this.giveaways.findIndex(g => g.id === giveawayId);
-        const newGiveaway: RawJsonGiveaway = JsonDatabaseAdapter.parseGiveaway({
-            ...giveaway,
-            ...data
-        });
-
-        this._raw.giveaways[giveawayIndex] = newGiveaway;
-        await this.saveJson();
-
-        this.emit('giveawayUpdate', giveaway, newGiveaway);
-
-        return JsonDatabaseAdapter.parseGiveaway(newGiveaway);
+    public async fetchGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        await this.fetchJson();
+        return (filter?.filter ? lodashFilter(this.entries, filter.filter) : this.entries).splice(0, filter?.count ?? Infinity);
     }
 
-    public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
-    public async deleteGiveaway(filter: Partial<IGiveaway>, count?: number): Promise<IGiveaway[]>;
-    public async deleteGiveaway(filter: string|Partial<IGiveaway>, count?: number): Promise<IGiveaway|IGiveaway[]|undefined> {
-        const findFirst = typeof filter === 'string';
+    public async updateGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>, data: Partial<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
+        const newEntries = entries.map(giveaway => ({ ...giveaway, ...data }));
 
-        filter = typeof filter === 'string' ? { id: filter } : filter;
+        for (const index in newEntries) {
+            const newEntry = newEntries.at(Number(index));
+            const oldEntry = entries.at(Number(index));
+            if (!newEntry || !oldEntry) continue;
 
-        await this.fetchJson();
-        const giveaways = lodashFilter(this.giveaways, filter).splice(0, count ?? Infinity);
+            const databaseIndex = this._raw.giveaways.findIndex(g => g.id === oldEntry.id);
+            this._raw.entries[databaseIndex] = JSONDatabaseAdapter.parseGiveawayEntry(newEntry);
 
-        this._raw.giveaways = this._raw.giveaways.filter(g => !giveaways.some(d => d.id === g.id));
-        this._raw.entries = this._raw.entries.filter(e => !giveaways.some(d => d.id === e.giveawayId));
+            this.emit('giveawayEntryUpdate', oldEntry, newEntry);
+        }
 
         await this.saveJson();
 
-        giveaways.forEach(g => this.emit('giveawayDelete', g));
-
-        return findFirst ? giveaways[0] : giveaways;
+        return newEntries;
     }
 
-    public async fetchGiveawayEntries(options: { filter?: Partial<IGiveawayEntry>; count?: number; }): Promise<IGiveawayEntry[]> {
-        await this.fetchJson();
-        return (options?.filter ? lodashFilter(this.entries, options.filter) : this.entries).splice(0, options?.count ?? Infinity);
-    }
+    public async deleteGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
 
-    public async fetchGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined> {
-        await this.fetchJson();
-        return this.entries.find(e => e.id === entryId);
-    }
-
-    public async createGiveawayEntry(giveawayId: string, data: IGiveawayEntry): Promise<IGiveawayEntry> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to create giveaway entry! Giveaway id not found: ${giveawayId}`);
-
-        const isExists = this.entries.find(e => e.id === data.id || (e.giveawayId === data.giveawayId && e.userId === data.userId));
-        if (isExists) throw new Error('Unable to create giveaway entry! Entry id already exists');
-
-        this._raw.entries.push(JsonDatabaseAdapter.parseGiveawayEntry(data));
-        await this.saveJson();
-
-        const entry = this.entries.find(e => e.id === data.id);
-        if (!entry) throw new Error('Unable to create new entry! Json file did not save');
-
-        this.emit('giveawayEntryCreate', entry);
-
-        return entry;
-    }
-
-    public async updateGiveawayEntry(entryId: string, data: Partial<IGiveawayEntry>): Promise<IGiveawayEntry> {
-        const entry = await this.fetchGiveawayEntry(entryId);
-        if (!entry) throw new Error(`Unable to entry! Entry id not found: ${entryId}`);
-
-        const entryIndex = this._raw.entries.findIndex(e => e.id === entryId);
-        const newEntry: RawJsonGiveawayEntry = JsonDatabaseAdapter.parseGiveawayEntry({
-            ...entry,
-            ...data
-        });
-
-        this._raw.entries[entryIndex] = newEntry;
-        await this.saveJson();
-
-        this.emit('giveawayEntryUpdate', entry, newEntry);
-
-        return JsonDatabaseAdapter.parseGiveawayEntry(newEntry);
-    }
-
-    public async deleteGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined>;
-    public async deleteGiveawayEntry(filter: Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry[]>;
-    public async deleteGiveawayEntry(filter: string|Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry|IGiveawayEntry[]|undefined> {
-        const findFirst = typeof filter === 'string';
-
-        filter = typeof filter === 'string' ? { id: filter } : filter;
-
-        await this.fetchJson();
-        const entries = lodashFilter(this.entries, filter).splice(0, count ?? Infinity);
+        for (const entry of entries) {
+            this.emit('giveawayEntryDelete', entry);
+        }
 
         this._raw.entries = this._raw.entries.filter(e => !entries.some(d => d.id === e.id));
         await this.saveJson();
 
-        entries.forEach(e => this.emit('giveawayEntryDelete', e));
-
-        return findFirst ? entries[0] : entries;
+        return entries;
     }
 
-    // Static Methods
+    public async createGiveawayEntry(data: Omit<RawGiveawayEntry, 'id'>): Promise<RawGiveawayEntry> {
+        await this.fetchJson();
 
-    public static parseGiveaway(giveaway: IGiveaway): RawJsonGiveaway;
-    public static parseGiveaway(giveaway: RawJsonGiveaway): IGiveaway;
-    public static parseGiveaway(giveaway: IGiveaway|RawJsonGiveaway): IGiveaway|RawJsonGiveaway {
+        const id = randomUUID();
+        const entry: RawGiveawayEntry = { id, ...data };
+
+        this._raw.entries.push(JSONDatabaseAdapter.parseGiveawayEntry(entry));
+        this.emit('giveawayEntryCreate', entry);
+
+        await this.saveJson();
+
+        return entry;
+    }
+
+    public static parseGiveaway(giveaway: RawGiveaway): RawJSONGiveaway;
+    public static parseGiveaway(giveaway: RawJSONGiveaway): RawGiveaway;
+    public static parseGiveaway(giveaway: RawGiveaway|RawJSONGiveaway): RawGiveaway|RawJSONGiveaway {
         return {
             ...giveaway,
             createdAt: this.parseDate(giveaway.createdAt) as any,
-            endedAt: (giveaway.endedAt ? this.parseDate(giveaway.endedAt) : null) as any,
-            endsAt: this.parseDate(giveaway.endsAt) as any
+            dueDate: giveaway.dueDate && this.parseDate(giveaway.dueDate) as any
         };
     }
 
-    public static parseGiveawayEntry(entry: IGiveawayEntry): RawJsonGiveawayEntry;
-    public static parseGiveawayEntry(entry: RawJsonGiveawayEntry): IGiveawayEntry;
-    public static parseGiveawayEntry(entry: IGiveawayEntry|RawJsonGiveawayEntry): IGiveawayEntry|RawJsonGiveawayEntry {
+    public static parseGiveawayEntry(entry: RawGiveawayEntry): RawJSONGiveawayEntry;
+    public static parseGiveawayEntry(entry: RawJSONGiveawayEntry): RawGiveawayEntry;
+    public static parseGiveawayEntry(entry: RawGiveawayEntry|RawJSONGiveawayEntry): RawGiveawayEntry|RawJSONGiveawayEntry {
         return {
             ...entry,
             createdAt: this.parseDate(entry.createdAt) as any,
