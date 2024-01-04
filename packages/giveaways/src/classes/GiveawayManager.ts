@@ -321,7 +321,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
                 throw new GiveawayManagerError(`Giveaway message not found!`);
             }
 
-            await message.edit(await this.createGiveawayMessageData({ giveaway }));
+            await message.edit(await this.createGiveawayMessageData({ giveaway, entries: await this.fetchGiveawayEntries(giveawayId) }));
         }
 
         return entry;

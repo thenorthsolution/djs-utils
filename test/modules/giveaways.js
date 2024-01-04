@@ -61,6 +61,26 @@ export class Giveaways {
                     .setRequired(true)
                 )
             )
+            .addSubcommand(pause => pause
+                .setName('pause')
+                .setDescription('Pauses a giveaway')
+                .addStringOption(giveaway => giveaway
+                    .setName('giveaway')
+                    .setDescription('The giveaway you want to pause')
+                    .setAutocomplete(true)
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(resume => resume
+                .setName('resume')
+                .setDescription('Resumes a giveaway')
+                .addStringOption(giveaway => giveaway
+                    .setName('giveaway')
+                    .setDescription('The giveaway you want to resume')
+                    .setAutocomplete(true)
+                    .setRequired(true)
+                )
+            )
             .setExecute(async ({ interaction }) => {
                 const subcommmand = interaction.options.getSubcommand(true);
                 if (!interaction.inCachedGuild()) return;
@@ -69,6 +89,8 @@ export class Giveaways {
                     case 'start': return this.handleGiveawayStartCommand(interaction);
                     case 'end': return this.handleGiveawayEndCommand(interaction);
                     case 'reroll': return this.handleGiveawayRerollCommand(interaction);
+                    case 'pause': return this.handleGiveawayPauseCommand(interaction);
+                    case 'resume': return this.handleGiveawayResumeCommand(interaction);
                 }
             })
     ];
@@ -85,9 +107,14 @@ export class Giveaways {
 
                 const query = interaction.options.getFocused();
                 const ended = interaction.options.getSubcommand() === 'reroll';
+                const paused = interaction.options.getSubcommand() === 'pause'
+                    ? true
+                    : interaction.options.getSubcommand() === 'resume'
+                        ? false
+                        : undefined;
 
                 let giveaways = await this.giveaways.database.fetchGiveaways({
-                    filter: { guildId: interaction.guildId, ended }
+                    filter: { guildId: interaction.guildId, ended, paused }
                 });
 
                 giveaways = query ? giveaways.filter(g => g.name.toLowerCase().includes(query.toLowerCase())) : giveaways;
@@ -145,7 +172,8 @@ export class Giveaways {
             channel,
             endsAt: duration,
             name,
-            winnerCount: winners
+            winnerCount: winners,
+            hostId: interaction.user.id
         });
 
         const message = await this.giveaways.fetchGiveawayMessage(giveaway);
@@ -200,6 +228,46 @@ export class Giveaways {
 
         await message.reply(`${winners.selectedEntries.map(e => userMention(e.userId)).join('')} won the reroll!`);
         await interaction.editReply(`Reroll successfull`);
+    }
+
+    /**
+     * 
+     * @param {ChatInputCommandInteraction} interaction 
+     * @returns 
+     */
+    async handleGiveawayPauseCommand(interaction) {
+        const giveawayId = interaction.options.getString('giveaway', true);
+
+        await interaction.deferReply({ ephemeral: true });
+
+        const giveaway = (await this.giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        if (!giveaway) {
+            await interaction.editReply(`Giveaway not found`);
+            return;
+        }
+
+        await this.giveaways.pauseGiveaway(giveaway.id);
+        await interaction.editReply(`Paused giveaway`);
+    }
+
+    /**
+     * 
+     * @param {ChatInputCommandInteraction} interaction 
+     * @returns 
+     */
+    async handleGiveawayResumeCommand(interaction) {
+        const giveawayId = interaction.options.getString('giveaway', true);
+
+        await interaction.deferReply({ ephemeral: true });
+
+        const giveaway = (await this.giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        if (!giveaway) {
+            await interaction.editReply(`Giveaway not found`);
+            return;
+        }
+
+        await this.giveaways.resumeGiveaway(giveaway.id);
+        await interaction.editReply(`Resumed giveaway`);
     }
 };
 
