@@ -1,18 +1,18 @@
+// @ts-check
 import ms from "ms";
 import { SlashCommandBuilder } from "reciple";
-import { GiveawayManager, MongodbDatabaseAdapter, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, JSONDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// @ts-check
-
 export class Giveaways {
     versions = '^8';
     /**
-     * @type {GiveawayManager<MongodbDatabaseAdapter>|null}
+     * @type {GiveawayManager<JSONDatabaseAdapter>}
      */
+    // @ts-expect-error
     giveaways = null;
     commands = [
         new SlashCommandBuilder()
@@ -63,6 +63,7 @@ export class Giveaways {
             )
             .setExecute(async ({ interaction }) => {
                 const subcommmand = interaction.options.getSubcommand(true);
+                if (!interaction.inCachedGuild()) return;
 
                 switch (subcommmand) {
                     case 'start': return this.handleGiveawayStartCommand(interaction);
@@ -85,7 +86,7 @@ export class Giveaways {
                 const query = interaction.options.getFocused();
                 const ended = interaction.options.getSubcommand() === 'reroll';
 
-                let giveaways = await this.giveaways.databaseAdapter.fetchGiveaways({
+                let giveaways = await this.giveaways.database.fetchGiveaways({
                     filter: { guildId: interaction.guildId, ended }
                 });
 
@@ -104,8 +105,8 @@ export class Giveaways {
     onStart({ client }) {
         this.giveaways = new GiveawayManager({
             client,
-            databaseAdapter: new Sqlite3DatabaseAdapter({
-                file: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.cache/giveaways.db'),
+            database: new JSONDatabaseAdapter({
+                file: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.cache/giveaways.json'),
             }),
         });
 
@@ -125,7 +126,7 @@ export class Giveaways {
 
     /**
      * 
-     * @param {ChatInputCommandInteraction} interaction 
+     * @param {ChatInputCommandInteraction<'cached'>} interaction 
      */
     async handleGiveawayStartCommand(interaction) {
         const name = interaction.options.getString('name', true);
@@ -134,19 +135,27 @@ export class Giveaways {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const message = await this.giveaways.createGiveaway({
-            channel: interaction.channel,
+        const channel = await interaction.guild.channels.fetch(interaction.channelId).catch(() => null);
+        if (!channel?.isTextBased()) {
+            await interaction.editReply(`Channel not found`);
+            return;
+        }
+
+        const giveaway = await this.giveaways.createGiveaway({
+            channel,
             endsAt: duration,
             name,
             winnerCount: winners
         });
+
+        const message = await this.giveaways.fetchGiveawayMessage(giveaway);
 
         await interaction.editReply(message.url);
     }
 
     /**
      * 
-     * @param {ChatInputCommandInteraction} interaction 
+     * @param {ChatInputCommandInteraction<'cached'>} interaction 
      * @returns 
      */
     async handleGiveawayEndCommand(interaction) {
@@ -155,7 +164,7 @@ export class Giveaways {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const giveaway = (await this.giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        const giveaway = (await this.giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
         if (!giveaway) {
             await interaction.editReply(`Giveaway not found`);
             return;
@@ -175,21 +184,21 @@ export class Giveaways {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const giveaway = (await this.giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        const giveaway = (await this.giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
         if (!giveaway) {
             await interaction.editReply(`Giveaway not found`);
             return;
         }
 
-        const winners = await this.giveaways.getRandomGiveawayEntries(giveaway.id, giveaway.winnerCount);
-        const message = await this.giveaways.getGiveawayMessage(giveaway);
+        const winners = await this.giveaways.selectGiveawayEntries(giveaway.id, { rigged: false, ignoredUsersId: giveaway.winnersEntryId });
+        const message = await this.giveaways.fetchGiveawayMessage(giveaway);
 
-        if (!winners.selected.length) {
+        if (!winners.selectedEntries.length) {
             await interaction.editReply(`No winners selected from reroll`);
             return;
         }
 
-        await message.reply(`${winners.selected.map(e => userMention(e.userId)).join('')} won the reroll!`);
+        await message.reply(`${winners.selectedEntries.map(e => userMention(e.userId)).join('')} won the reroll!`);
         await interaction.editReply(`Reroll successfull`);
     }
 };

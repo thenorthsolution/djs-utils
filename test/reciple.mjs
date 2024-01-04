@@ -1,7 +1,6 @@
 // @ts-check
 import { CooldownPrecondition, CommandPermissionsPrecondition } from 'reciple';
 import { IntentsBitField } from 'discord.js';
-import { cliVersion } from 'reciple';
 
 /**
  * @satisfies {import('reciple').RecipleConfig}
@@ -61,7 +60,7 @@ export const config = {
         }
     },
     modules: {
-        dirs: ['./modules'],
+        dirs: ['./modules', './modules/utils'],
         exclude: [],
         filter: file => true,
         disableModuleVersionCheck: false
