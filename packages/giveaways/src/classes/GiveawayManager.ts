@@ -351,6 +351,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
                             type: ComponentType.Button,
                             ...this.joinButton,
                             style: ButtonStyle.Primary,
+                            disabled: options.giveaway.ended || options.giveaway.paused
                         }
                     ]
                 }
