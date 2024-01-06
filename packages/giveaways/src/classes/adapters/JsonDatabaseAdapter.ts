@@ -4,7 +4,6 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { filter as lodashFilter } from 'lodash';
 import { existsSync } from 'fs';
 import path from 'path';
-import { randomUUID } from 'crypto';
 
 export interface JSONDatabaseAdapterSchema {
     giveaways: RawJSONGiveaway[];
@@ -95,11 +94,11 @@ export class JSONDatabaseAdapter extends BaseGiveawayDatabaseAdapter {
         this._raw.entries = this._raw.entries.filter(e => !entries.some(d => d.id === e.id));
 
         for (const giveaway of giveaways) {
-            this.emit('giveawayDelete', giveaway);
-
             for (const entry of entries.filter(e => e.giveawayId === giveaway.id)) {
                 this.emit('giveawayEntryDelete', entry);
             }
+
+            this.emit('giveawayDelete', giveaway);
         }
 
         await this.saveJson();
@@ -162,7 +161,7 @@ export class JSONDatabaseAdapter extends BaseGiveawayDatabaseAdapter {
     public async createGiveawayEntry(data: Omit<RawGiveawayEntry, 'id'>): Promise<RawGiveawayEntry> {
         await this.fetchJson();
 
-        const id = randomUUID();
+        const id = Number(BigInt(Date.now()) << 22n).toString();
         const entry: RawGiveawayEntry = { id, ...data };
 
         this._raw.entries.push(JSONDatabaseAdapter.parseGiveawayEntry(entry));

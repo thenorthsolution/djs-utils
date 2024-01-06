@@ -1,16 +1,14 @@
 // @ts-check
 import ms from "ms";
 import { SlashCommandBuilder } from "reciple";
-import { GiveawayManager, JSONDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
-import path from "path";
-import { fileURLToPath } from "url";
 
 export class Giveaways {
     versions = '^8';
     /**
-     * @type {GiveawayManager<JSONDatabaseAdapter>}
+     * @type {GiveawayManager<MongodbDatabaseAdapter>}
      */
     // @ts-expect-error
     giveaways = null;
@@ -130,10 +128,12 @@ export class Giveaways {
      * @param {import("reciple").RecipleModuleStartData} param0
      */
     onStart({ client }) {
+        if (!process.env.MONGODB) return false;
+
         this.giveaways = new GiveawayManager({
             client,
-            database: new JSONDatabaseAdapter({
-                file: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.cache/giveaways.json'),
+            database: new MongodbDatabaseAdapter({
+                mongooseConnection: process.env.MONGODB
             }),
         });
 
