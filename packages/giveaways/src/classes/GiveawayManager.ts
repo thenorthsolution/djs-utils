@@ -206,7 +206,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         }))[0];
 
         const message = await this.fetchGiveawayMessage(giveaway);
-        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway }));
+        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway, entries: await this.fetchGiveawayEntries(giveaway.id) }));
         return newGiveaway;
     }
 
@@ -225,7 +225,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         }))[0];
 
         const message = await this.fetchGiveawayMessage(giveaway);
-        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway }));
+        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway, entries: await this.fetchGiveawayEntries(giveaway.id) }));
 
         this.createGiveawayTimeout(id, newGiveaway.dueDate);
         return newGiveaway;
