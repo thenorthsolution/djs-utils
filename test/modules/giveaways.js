@@ -206,7 +206,7 @@ export class Giveaways {
             return;
         }
 
-        await this.giveaways.endGiveaway(giveaway.id, !cancel);
+        await this.giveaways.endGiveaway(giveaway.id, cancel);
         await interaction.editReply(`Ended giveaway`);
     }
 
