@@ -138,6 +138,13 @@ export class Giveaways {
             }),
         });
 
+        this.giveaways.database.on('giveawayCreate', g => console.log(`GC:`, g));
+        this.giveaways.database.on('giveawayDelete', g => console.log(`GD:`, g));
+        this.giveaways.database.on('giveawayUpdate', (o, g) => console.log(`GU:`, g));
+        this.giveaways.database.on('giveawayEntryCreate', e => console.log(`EC:`, e));
+        this.giveaways.database.on('giveawayEntryDelete', e => console.log(`ED:`, e));
+        this.giveaways.database.on('giveawayEntryUpdate', (o, e) => console.log(`EU:`, e));
+
         return true;
     }
 

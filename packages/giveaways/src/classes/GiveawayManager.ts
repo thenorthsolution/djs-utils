@@ -281,7 +281,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         this.deleteGiveawayTimeout(id);
         this.emit('giveawayDelete', giveaway);
 
-        const message = await this.fetchGiveawayMessage(giveaway);
+        const message = await this.fetchGiveawayMessage(giveaway).catch(() => null);
         if (!message) return;
 
         if (deleteMessage) await message.delete();

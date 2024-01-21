@@ -285,8 +285,8 @@ export class Sqlite3DatabaseAdapter extends BaseGiveawayDatabaseAdapter {
         return {
             ...giveaway,
             createdAt: this.parseDate(giveaway.createdAt) as any,
-            paused: this.parseValue(giveaway.paused) as any,
-            ended: this.parseValue(giveaway.ended) as any,
+            paused: this.parseBoolean(giveaway.paused) as any,
+            ended: this.parseBoolean(giveaway.ended) as any,
             dueDate: this.parseDate(giveaway.dueDate) as any,
             riggedUsersId: giveaway.riggedUsersId ? this.parseArray(giveaway.riggedUsersId) : (typeof giveaway.createdAt === 'string' ? undefined : null ) as any,
             winnersEntryId: this.parseArray(giveaway.winnersEntryId) as any
@@ -307,6 +307,15 @@ export class Sqlite3DatabaseAdapter extends BaseGiveawayDatabaseAdapter {
     public static parseDate(date: string|Date): string|Date;
     public static parseDate(date: string|Date): string|Date {
         return typeof date === 'string' ? new Date(date) : date.toISOString();
+    }
+
+    public static parseBoolean(data: boolean): string;
+    public static parseBoolean(data: string): boolean;
+    public static parseBoolean(data: string|boolean): string|boolean;
+    public static parseBoolean(data: string|boolean): string|boolean {
+        if (typeof data === 'boolean') return String(data);
+
+        return Boolean(data);
     }
 
     public static parseValue(value: string|string[]|number|boolean|Date|null): string|number|null {
