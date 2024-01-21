@@ -31,7 +31,7 @@ client.login('TOKEN');
 
 # Domains
 
-By default this package uses [discord-phishing-links](https://github.com/nikolaischunk/discord-phishing-links) for the list of malicious discord domains!
+By default this package uses [Discord-AntiScam/scam-links](https://github.com/Discord-AntiScam/scam-links/blob/main/list.json) for the list of malicious discord domains!
 
 ## Add custom domains
 
@@ -48,5 +48,5 @@ scamLinks.addDomains('anothersuspicious.com', 'moresuspicious.com');
 
 // Add from url
 scamLinks.fetchDomainsFromUrl('https://yourdomain.com/domains.json'); // Example content ["anothersuspicious.com", "moresuspicious.com"]
-scamLinks.fetchDomainsFromUrl('https://yourdomainagain.com/domains.json', { dataParser: data => data.domains }); // Example content { "domains": ["anothersuspicious.com", "moresuspicious.com"] }
+scamLinks.fetchDomainsFromUrl('https://yourdomainagain.com/domains.json', { dataParser: async data => (await data.json()).domains }); // Example content { "domains": ["anothersuspicious.com", "moresuspicious.com"] }
 ```
