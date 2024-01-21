@@ -107,9 +107,9 @@ export class Giveaways {
                 const query = interaction.options.getFocused();
                 const ended = interaction.options.getSubcommand() === 'reroll';
                 const paused = interaction.options.getSubcommand() === 'pause'
-                    ? true
+                    ? false
                     : interaction.options.getSubcommand() === 'resume'
-                        ? false
+                        ? true
                         : undefined;
 
                 let giveaways = await this.giveaways.database.fetchGiveaways({
