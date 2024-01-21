@@ -1,14 +1,15 @@
 // @ts-check
 import ms from "ms";
-import { SlashCommandBuilder } from "reciple";
-import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { SlashCommandBuilder, cli } from "reciple";
+import { GiveawayManager, Sqlite3DatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { ChatInputCommandInteraction, userMention } from "discord.js";
 import { InteractionListenerType } from "reciple-interaction-events";
+import path from "path";
 
 export class Giveaways {
     versions = '^8';
     /**
-     * @type {GiveawayManager<MongodbDatabaseAdapter>}
+     * @type {GiveawayManager<Sqlite3DatabaseAdapter>}
      */
     // @ts-expect-error
     giveaways = null;
@@ -132,8 +133,8 @@ export class Giveaways {
 
         this.giveaways = new GiveawayManager({
             client,
-            database: new MongodbDatabaseAdapter({
-                mongooseConnection: process.env.MONGODB
+            database: new Sqlite3DatabaseAdapter({
+                database: path.join(cli.cwd, '.cache/database.db')
             }),
         });
 
@@ -147,7 +148,7 @@ export class Giveaways {
     async onLoad({ client }) {
         this.giveaways.on('error', console.log);
 
-        await this.giveaways.start();
+        await this.giveaways.start();~
         await this.giveaways.clean();
     }
 
