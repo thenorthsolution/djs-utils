@@ -121,7 +121,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
 
         this.ready = true;
 
-        const giveaways = await this.database.fetchGiveaways({ filter: { ended: false } });
+        const giveaways = await this.database.fetchGiveaways({ filter: { ended: false, paused: false } });
 
         for (const giveaway of giveaways) {
             await this.createGiveawayTimeout(giveaway.id, giveaway.dueDate).catch(err => this.emit(err));
@@ -231,7 +231,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
         return newGiveaway;
     }
 
-    public async endGiveaway(id: string, cancel?: boolean): Promise<GiveawayManagerEntriesData|null> {
+    public async endGiveaway(id: string, cancel: boolean = false): Promise<GiveawayManagerEntriesData|null> {
         if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
 
         this.deleteGiveawayTimeout(id);
