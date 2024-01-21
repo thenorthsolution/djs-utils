@@ -1,6 +1,6 @@
 import { DiscordScamLinks } from './DiscordScamLinks';
 import { Awaitable, If } from 'fallout-utility';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 export interface UrlJsonContentOptions<ResponseData = string[]> {
     djsScamLinks?: DiscordScamLinks;

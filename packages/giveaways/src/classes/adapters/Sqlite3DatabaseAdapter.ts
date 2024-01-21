@@ -1,8 +1,8 @@
-import type Sqlite3 from 'better-sqlite3';
 import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions } from '../BaseGiveawayDatabaseAdapter';
-import { GiveawayManager } from '../GiveawayManager';
 import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
-import path from 'path';
+import { GiveawayManager } from '../GiveawayManager';
+import type Sqlite3 from 'better-sqlite3';
+import path from 'node:path';
 
 export interface Sqlite3DatabaseAdapterOptions {
     database: string|Buffer|Sqlite3.Database|[string|Buffer, Sqlite3.Options];

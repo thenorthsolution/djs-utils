@@ -1,7 +1,7 @@
 import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions } from '../BaseGiveawayDatabaseAdapter';
+import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { InferSchemaType, Model, Mongoose, Schema } from 'mongoose';
 import { JSONEncodable, isJSONEncodable } from 'fallout-utility';
-import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { GiveawayManager } from '../GiveawayManager';
 
 export interface MongodbDatabaseAdapterOptions {

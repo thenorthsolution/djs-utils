@@ -2,8 +2,8 @@ import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions }
 import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { filter as lodashFilter } from 'lodash';
-import { existsSync } from 'fs';
-import path from 'path';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 export interface JSONDatabaseAdapterSchema {
     giveaways: RawJSONGiveaway[];

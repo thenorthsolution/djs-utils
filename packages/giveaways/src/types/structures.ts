@@ -1,6 +1,6 @@
 import { ButtonStyle, GuildTextBasedChannel, InteractionButtonComponentData } from 'discord.js';
-import { GiveawayManager } from '../classes/GiveawayManager';
 import { BaseGiveawayDatabaseAdapter } from '../classes/BaseGiveawayDatabaseAdapter';
+import { GiveawayManager } from '../classes/GiveawayManager';
 
 export interface RawGiveaway {
     id: string;

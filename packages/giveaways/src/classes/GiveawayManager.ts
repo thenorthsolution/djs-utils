@@ -1,9 +1,9 @@
 import { GiveawayManagerButtonOptions, GiveawayManagerCreateGiveawayEmbedOptions, GiveawayManagerCreateGiveawayMessageOptions, GiveawayManagerCreateGiveawayOptions, GiveawayManagerEntriesData, GiveawayManagerSelectGiveawayEntriesOptions, RawGiveaway, RawGiveawayEntry } from '../types/structures';
+import { APIEmbed, BaseMessageOptions, ButtonInteraction, ButtonStyle, Client, Collection, ComponentType, EmbedBuilder, GuildTextBasedChannel, InteractionButtonComponentData, Message, inlineCode, time, userMention } from 'discord.js';
+import { GiveawayManagerEventHandler } from './GiveawayManagerEventHandler';
 import { BaseGiveawayDatabaseAdapter } from './BaseGiveawayDatabaseAdapter';
 import { Awaitable, JSONEncodable, TypedEmitter } from 'fallout-utility';
-import { APIEmbed, BaseMessageOptions, ButtonInteraction, ButtonStyle, Client, Collection, ComponentType, EmbedBuilder, GuildTextBasedChannel, InteractionButtonComponentData, Message, inlineCode, time, userMention } from 'discord.js';
 import { GiveawayManagerError } from './GiveawayManagerError';
-import { GiveawayManagerEventHandler } from './GiveawayManagerEventHandler';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
