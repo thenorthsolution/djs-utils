@@ -1,10 +1,10 @@
 import { APIButtonComponentWithCustomId, ActionRowBuilder, ButtonBuilder, ButtonInteraction, If, InteractionButtonComponentData, InteractionCollector, JSONEncodable, MappedInteractionTypes, MessageActionRowComponentBuilder, MessageCollectorOptionsParams, MessageComponentInteraction, MessageComponentType, RestOrArray, normalizeArray } from 'discord.js';
-import { BasePaginationBuilder, BasePaginationEvents, BasePaginationOptions } from './BasePaginationBuilder';
 import { ButtonPaginationController, ButtonPaginationControllerResolavable, ButtonPaginationOnEnd, resolveButtonBuilder } from '../types/buttons';
-import { isJSONEncodable } from 'fallout-utility';
-import { PaginationControllerType, SendAs, getEnumValue } from '../types/enums';
-import { PageData } from '../types/page';
+import { BasePaginationBuilder, BasePaginationEvents, BasePaginationOptions } from './BasePaginationBuilder';
 import { InteractionPaginationSendOptions, MessagePaginationSendOptions } from '../types/send';
+import { PaginationControllerType, SendAs, getEnumValue } from '../types/enums';
+import { isJSONEncodable } from 'fallout-utility';
+import { PageData } from '../types/page';
 
 export interface ButtonPaginationOptions extends BasePaginationOptions {
     buttons: ButtonPaginationControllerResolavable[];

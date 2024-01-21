@@ -1,6 +1,6 @@
+import { ReactionPaginationOnEnd, ReactionPaginationReactionController, ReactionPaginationReactionControllerResolvable, resolveReactionController } from '../types/reactions';
 import { EmojiResolvable, If, IntentsBitField, Message, MessageReaction, ReactionCollector, ReactionCollectorOptions, RestOrArray, normalizeArray } from 'discord.js';
 import { BasePaginationBuilder, BasePaginationEvents, BasePaginationOptions } from './BasePaginationBuilder';
-import { ReactionPaginationOnEnd, ReactionPaginationReactionController, ReactionPaginationReactionControllerResolvable, resolveReactionController } from '../types/reactions';
 import { PaginationActionRows, PaginationControllerType, SendAs, getEnumValue } from '../types/enums';
 import { InteractionPaginationSendOptions, MessagePaginationSendOptions } from '../types/send';
 import { PaginationComponentsOrderWithoutControllers } from '../types/page';

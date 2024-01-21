@@ -1,6 +1,6 @@
 import { APIActionRowComponent, APIMessageActionRowComponent, ActionRow, ActionRowBuilder, MessageActionRowComponentBuilder } from 'discord.js';
-import { PageData } from './page';
 import { isJSONEncodable } from 'fallout-utility';
+import { PageData } from './page';
 
 export type ActionRowResolvable = Exclude<PageData['components'], undefined>[0];
 

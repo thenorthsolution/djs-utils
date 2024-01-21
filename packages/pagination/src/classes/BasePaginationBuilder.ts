@@ -1,8 +1,8 @@
-import { TypedEmitter, isJSONEncodable } from 'fallout-utility';
-import { DynamicPageFunction, PageData, PageResolvable, PaginationComponentsOrder, resolvePage, resolveStaticPages } from '../types/page';
 import { ActionRowBuilder, If, JSONEncodable, Message, MessageActionRowComponentBuilder, MessageResolvable, RepliableInteraction, RestOrArray, UserResolvable, normalizeArray } from 'discord.js';
+import { DynamicPageFunction, PageData, PageResolvable, PaginationComponentsOrder, resolvePage, resolveStaticPages } from '../types/page';
 import { ActionRowResolvable, disableComponents } from '../types/actionRow';
 import { PaginationActionRows, SendAs, getEnumValue } from '../types/enums';
+import { TypedEmitter, isJSONEncodable } from 'fallout-utility';
 
 export interface BasePaginationOptions {
     pages: PageResolvable[];
