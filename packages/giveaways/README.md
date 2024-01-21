@@ -68,7 +68,6 @@ client.on('ready', async () => {
             .addStringOption(giveaway => giveaway
                 .setName('giveaway')
                 .setDescription('The giveaway you want to end')
-                .setAutocomplete(true)
                 .setRequired(true)
             )
             .addBooleanOption(cancel => cancel
@@ -82,7 +81,6 @@ client.on('ready', async () => {
             .addStringOption(giveaway => giveaway
                 .setName('giveaway')
                 .setDescription('The giveaway you want to end')
-                .setAutocomplete(true)
                 .setRequired(true)
             )
         );
@@ -126,7 +124,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        await giveaways.endGiveaway(giveaway.id, !cancel);
+        await giveaways.endGiveaway(giveaway.id, cancel);
         await interaction.editReply(`Ended giveaway`);
     } else if (subcommand === 'reroll') {
         const giveawayId = interaction.options.getString('giveaway', true);
