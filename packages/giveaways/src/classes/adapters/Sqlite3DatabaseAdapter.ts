@@ -313,9 +313,7 @@ export class Sqlite3DatabaseAdapter extends BaseGiveawayDatabaseAdapter {
     public static parseBoolean(data: string): boolean;
     public static parseBoolean(data: string|boolean): string|boolean;
     public static parseBoolean(data: string|boolean): string|boolean {
-        if (typeof data === 'boolean') return String(data);
-
-        return Boolean(data);
+        return typeof data === 'string' ? data === 'true' : String(data);
     }
 
     public static parseValue(value: string|string[]|number|boolean|Date|null): string|number|null {
@@ -324,7 +322,7 @@ export class Sqlite3DatabaseAdapter extends BaseGiveawayDatabaseAdapter {
         if (value === null) return null;
         if (value === undefined) return '';
         if (typeof value === 'number') return value;
-        if (typeof value === 'boolean') return value === true ? 'true' : 'false';
+        if (typeof value === 'boolean') return this.parseBoolean(value);
 
         return String(value);
     }
