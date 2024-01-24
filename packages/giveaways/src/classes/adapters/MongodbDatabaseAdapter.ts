@@ -1,9 +1,8 @@
+import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions } from '../BaseGiveawayDatabaseAdapter';
+import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { InferSchemaType, Model, Mongoose, Schema } from 'mongoose';
-import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
-import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
-import { JSONEncodable, isJSONEncodable } from 'discord.js';
+import { JSONEncodable, isJSONEncodable } from 'fallout-utility';
 import { GiveawayManager } from '../GiveawayManager';
-import { mapKeys, snakeCase } from 'lodash';
 
 export interface MongodbDatabaseAdapterOptions {
     mongooseConnection: Mongoose|string;
@@ -14,7 +13,7 @@ export interface MongodbDatabaseAdapterOptions {
 export type RawMongodbGiveaway = InferSchemaType<MongodbDatabaseAdapter['giveawaySchema']>;
 export type RawMongodbGiveawayEntry = InferSchemaType<MongodbDatabaseAdapter['giveawayEntrySchema']>;
 
-export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
+export class MongodbDatabaseAdapter extends BaseGiveawayDatabaseAdapter {
     public mongoose?: Mongoose;
     public giveawaysModel!: Model<RawMongodbGiveaway>;
     public giveawayEntriesModel!: Model<RawMongodbGiveawayEntry>;
@@ -37,192 +36,172 @@ export class MongodbDatabaseAdapter extends BaseDatabaseAdapter {
         await super.start(manager);
     }
 
-    public async fetchGiveaways(options?: { filter?: Partial<IGiveaway>, count?: number }): Promise<IGiveaway[]> {
-        const data = await this.giveawaysModel.find({
-            ...(options?.filter ? MongodbDatabaseAdapter.parseGiveawayObject(options.filter) : {})
-        }, null, { limit: options?.count });
-
-        return data.map(d => MongodbDatabaseAdapter.parseGiveawayDocument(d));
+    public async fetchGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
+        const data = await this.giveawaysModel.find(filter.filter ?? {}, null, { limit: filter.count });
+        return data.map(MongodbDatabaseAdapter.parseGiveawayDocument);
     }
 
+    public async updateGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>, data: Partial<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        if (!giveaways.length) return [];
 
-    public async fetchGiveaway(giveawayId: string): Promise<IGiveaway|undefined> {
-        const data = await this.giveawaysModel.findOne({
-            id: giveawayId
-        });
+        await this.giveawaysModel.updateMany({
+            id: { $in: giveaways.map(giveaway => giveaway.id) },
+        }, data);
 
-        return data ? MongodbDatabaseAdapter.parseGiveawayDocument(data) : undefined;
+        const newGiveaways = giveaways.map(g => ({ ...g, ...data }));
+
+        for (const giveaway of newGiveaways) {
+            const oldGiveaway = giveaways.find(g => g.id === giveaway.id)!;
+            this.emit('giveawayUpdate', oldGiveaway, giveaway);
+        }
+
+        return newGiveaways;
     }
 
-    public async createGiveaway(data: IGiveaway): Promise<IGiveaway> {
-        const newData = await this.giveawaysModel.create(MongodbDatabaseAdapter.parseGiveawayObject(data));
-        this.emit('giveawayCreate', data);
-        return MongodbDatabaseAdapter.parseGiveawayDocument(newData);
+    public async deleteGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        if (!giveaways.length) return [];
+
+        const entries = (await this.giveawayEntriesModel.find({
+            giveawayId: { $in: giveaways.map(g => g.id) }
+        })).map(MongodbDatabaseAdapter.parseGiveawayEntryDocument);
+
+        await this.giveawaysModel.deleteMany({ id: { $in: giveaways.map(g => g.id) } });
+        await this.giveawayEntriesModel.deleteMany({ id: { $in: entries.map(e => e.id) } });
+
+        for (const giveaway of giveaways) {
+            for (const entry of entries.filter(e => e.giveawayId === giveaway.id)) {
+                this.emit('giveawayEntryDelete', entry);
+            }
+
+            this.emit('giveawayDelete', giveaway);
+        }
+
+        return giveaways;
     }
 
-    public async updateGiveaway(giveawayId: string, data: Partial<IGiveaway>): Promise<IGiveaway> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
-
-        const updated = await this.giveawaysModel.updateOne({ id: giveawayId }, MongodbDatabaseAdapter.parseGiveawayObject(data));
-        if (!updated.modifiedCount) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
-
-        const newGiveaway = (await this.fetchGiveaway(giveawayId))!;
-        this.emit('giveawayUpdate', giveaway, newGiveaway);
-
-        return newGiveaway;
+    public async createGiveaway(data: Omit<RawGiveaway, 'id'>): Promise<RawGiveaway> {
+        const giveaway = MongodbDatabaseAdapter.parseGiveawayDocument(await this.giveawaysModel.create({ id: data.messageId, ...data }));
+        this.emit('giveawayCreate', giveaway);
+        return giveaway;
     }
 
-    public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
-    public async deleteGiveaway(filter: Partial<IGiveaway>, count?: number): Promise<IGiveaway[]>;
-    public async deleteGiveaway(filter: string|Partial<IGiveaway>, count?: number): Promise<IGiveaway|IGiveaway[]|undefined> {
-        const findFirst = typeof filter === 'string';
-
-        filter = typeof filter === 'string' ? { id: filter } : filter;
-
-        const giveaways = await this.fetchGiveaways({ filter, count: findFirst ? 1 : count });
-        if (!giveaways.length) return findFirst ? giveaways[0] : giveaways;
-
-        await this.giveawayEntriesModel.deleteMany({
-            $or: giveaways.map(e => ({ giveaway_id: e.id }))
-        });
-
-        await this.giveawaysModel.deleteMany({
-            $or: giveaways.map(g => ({ id: g.id }))
-        });
-
-        giveaways.forEach(g => this.emit('giveawayDelete', g));
-
-        return findFirst ? giveaways[0] : giveaways;
+    public async fetchGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const data = await this.giveawayEntriesModel.find(filter.filter ?? {}, null, { limit: filter.count });
+        return data.map(MongodbDatabaseAdapter.parseGiveawayEntryDocument);
     }
 
+    public async updateGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>, data: Partial<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
+        if (!entries.length) return [];
 
-    public async fetchGiveawayEntries(options: { filter?: Partial<IGiveawayEntry>; count?: number; }): Promise<IGiveawayEntry[]> {
-        const data = await this.giveawayEntriesModel.find({
-            ...(options?.filter ? MongodbDatabaseAdapter.parseGiveawayEntryObject(options?.filter) : {})
-        }, null, { limit: options?.count });
+        await this.giveawayEntriesModel.updateMany({
+            id: { $in: entries.map(entry => entry.id) },
+        }, data);
 
-        return data.map(d => MongodbDatabaseAdapter.parseGiveawayEntryDocument(d));
+        const newEntries = entries.map(e => ({ ...e, ...data }));
+
+        for (const entry of newEntries) {
+            const oldEntry = entries.find(g => g.id === entry.id)!;
+            this.emit('giveawayEntryUpdate', oldEntry, entry);
+        }
+
+        return newEntries;
     }
 
-    public async fetchGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined> {
-        const data = await this.giveawayEntriesModel.findOne({
-            id: entryId
-        });
+    public async deleteGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
+        if (!entries.length) return [];
 
-        return data ? MongodbDatabaseAdapter.parseGiveawayEntryDocument(data) : undefined;
+        await this.giveawayEntriesModel.deleteMany({ id: { $in: entries.map(e => e.id) } });
+
+        for (const entry of entries) {
+            this.emit('giveawayEntryDelete', entry);
+        }
+
+        return entries;
     }
 
-    public async createGiveawayEntry(giveawayId: string, data: IGiveawayEntry): Promise<IGiveawayEntry> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to create new giveaway`);
-
-        const newData = await this.giveawayEntriesModel.create(MongodbDatabaseAdapter.parseGiveawayEntryObject(data));
-        this.emit('giveawayEntryCreate', data);
-        return MongodbDatabaseAdapter.parseGiveawayEntryDocument(newData);
+    public async createGiveawayEntry(data: Omit<RawGiveawayEntry, 'id'>): Promise<RawGiveawayEntry> {
+        const id = Number(BigInt(Date.now()) << 22n).toString();
+        const entry = MongodbDatabaseAdapter.parseGiveawayEntryDocument(await this.giveawayEntriesModel.create({ id, ...data }));
+        this.emit('giveawayEntryCreate', entry);
+        return entry;
     }
 
-    public async updateGiveawayEntry(entryId: string, data: Partial<IGiveawayEntry>): Promise<IGiveawayEntry> {
-        const entry = await this.fetchGiveawayEntry(entryId);
-        if (!entry) throw new Error(`Unable to update giveaway entry! Entry id not found: ${entryId}`);
-
-        const updated = await this.giveawayEntriesModel.updateOne({ id: entryId }, MongodbDatabaseAdapter.parseGiveawayEntryObject(data));
-        if (!updated.modifiedCount) throw new Error(`Unable to update giveaway entry! Entry id not found: ${entryId}`);
-
-        const newEntry = (await this.fetchGiveawayEntry(entryId))!;
-        this.emit('giveawayEntryUpdate', entry, newEntry);
-
-        return newEntry;
-    }
-
-    public async deleteGiveawayEntry(giveawayId: string): Promise<IGiveawayEntry|undefined>;
-    public async deleteGiveawayEntry(filter: Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry[]>;
-    public async deleteGiveawayEntry(filter: string|Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry|IGiveawayEntry[]|undefined> {
-        const findFirst = typeof filter === 'string';
-
-        filter = typeof filter === 'string' ? { id: filter } : filter;
-
-        const entries = await this.fetchGiveawayEntries({ filter, count: findFirst ? 1 : count });
-        if (!entries.length) return findFirst ? entries[0] : entries;
-
-        await this.giveawayEntriesModel.deleteMany({
-            $or: entries.map(e => ({ id: e.id }))
-        });
-
-        entries.forEach(e => this.emit('giveawayEntryDelete', e));
-
-        return findFirst ? entries[0] : entries;
-    }
-
-    // Static
-
-    public static parseGiveawayDocument(document: RawMongodbGiveaway|JSONEncodable<RawMongodbGiveaway>): IGiveaway {
+    public static parseGiveawayDocument(document: RawMongodbGiveaway|JSONEncodable<RawMongodbGiveaway>): RawGiveaway {
         const data = isJSONEncodable(document) ? document.toJSON() : document;
 
         return {
             id: data.id,
-            guildId: data.guild_id,
-            channelId: data.channel_id,
-            messageId: data.message_id,
-            authorId: data.author_id ?? undefined,
+            guildId: data.guildId,
+            channelId: data.channelId,
+            messageId: data.messageId,
+            hostId: data.hostId ?? undefined,
             name: data.name,
-            winnerCount: data.winner_count,
-            endsAt: data.ends_at,
-            createdAt: data.created_at,
-            ended: data.ended ?? false,
-            endedAt: data.ended_at ?? null,
-            winnersEntryId: data.winners_entry_id,
+            description: data.description ?? undefined,
+            winnerCount: data.winnerCount,
+            createdAt: data.createdAt,
+            paused: data.paused,
+            remaining: data.remaining ?? undefined,
+            ended: data.ended,
+            dueDate: data.dueDate,
+            riggedUsersId: data.riggedUsersId ?? undefined,
+            winnersEntryId: data.winnersEntryId,
         };
     }
 
-    public static parseGiveawayObject(data: IGiveaway|JSONEncodable<IGiveaway>): RawMongodbGiveaway;
-    public static parseGiveawayObject(data: Partial<IGiveaway>|JSONEncodable<Partial<IGiveaway>>): Partial<RawMongodbGiveaway>;
-    public static parseGiveawayObject(data: IGiveaway|JSONEncodable<IGiveaway>|Partial<IGiveaway>|JSONEncodable<Partial<IGiveaway>>): RawMongodbGiveaway|Partial<RawMongodbGiveaway> {
+    public static parseGiveawayObject(data: RawGiveaway|JSONEncodable<RawGiveaway>): RawMongodbGiveaway;
+    public static parseGiveawayObject(data: Partial<RawGiveaway>|JSONEncodable<Partial<RawGiveaway>>): Partial<RawMongodbGiveaway>;
+    public static parseGiveawayObject(data: RawGiveaway|JSONEncodable<RawGiveaway>|Partial<RawGiveaway>|JSONEncodable<Partial<RawGiveaway>>): RawMongodbGiveaway|Partial<RawMongodbGiveaway> {
         data = isJSONEncodable(data) ? data.toJSON() : data;
-        return mapKeys(data, (value, key) => snakeCase(key));
+        return data;
     }
 
-    public static parseGiveawayEntryDocument(document: RawMongodbGiveawayEntry|JSONEncodable<RawMongodbGiveawayEntry>): IGiveawayEntry {
+    public static parseGiveawayEntryDocument(document: RawMongodbGiveawayEntry|JSONEncodable<RawMongodbGiveawayEntry>): RawGiveawayEntry {
         const data = isJSONEncodable(document) ? document.toJSON() : document;
 
         return {
             id: data.id,
-            giveawayId: data.giveaway_id,
-            userId: data.user_id,
-            createdAt: data.created_at,
+            giveawayId: data.giveawayId,
+            userId: data.userId,
+            chance: data.chance,
+            createdAt: data.createdAt,
         };
     }
 
-    public static parseGiveawayEntryObject(data: IGiveawayEntry|JSONEncodable<IGiveawayEntry>): RawMongodbGiveawayEntry
-    public static parseGiveawayEntryObject(data: Partial<IGiveawayEntry>|JSONEncodable<Partial<IGiveawayEntry>>): Partial<RawMongodbGiveawayEntry>;
-    public static parseGiveawayEntryObject(data: IGiveawayEntry|JSONEncodable<IGiveawayEntry>|Partial<IGiveawayEntry>|JSONEncodable<Partial<IGiveawayEntry>>): RawMongodbGiveawayEntry|Partial<RawMongodbGiveawayEntry> {
+    public static parseGiveawayEntryObject(data: RawGiveawayEntry|JSONEncodable<RawGiveawayEntry>): RawMongodbGiveawayEntry
+    public static parseGiveawayEntryObject(data: Partial<RawGiveawayEntry>|JSONEncodable<Partial<RawGiveawayEntry>>): Partial<RawMongodbGiveawayEntry>;
+    public static parseGiveawayEntryObject(data: RawGiveawayEntry|JSONEncodable<RawGiveawayEntry>|Partial<RawGiveawayEntry>|JSONEncodable<Partial<RawGiveawayEntry>>): RawMongodbGiveawayEntry|Partial<RawMongodbGiveawayEntry> {
         data = isJSONEncodable(data) ? data.toJSON() : data;
-        return mapKeys(data, (value, key) => snakeCase(key));
+        return data;
     }
 
-    public static ObjectId = Schema.ObjectId;
     public static giveawaySchema = new Schema({
-        id: { type: String, required: true },
-        guild_id: { type: String, required: true },
-        channel_id: { type: String, required: true },
-        message_id: { type: String, required: true },
-        author_id: String,
+        id: { type: String, required: true, unique: true },
+        guildId: { type: String, required: true },
+        channelId: { type: String, required: true },
+        messageId: { type: String, required: true },
+        hostId: String,
         name: { type: String, required: true },
-        winner_count: { type: Number, required: true },
-        ends_at: { type: Date, required: true },
-        created_at: { type: Date, required: true, default: Date.now },
-        ended: { type: Boolean, required: true, default: false },
-        ended_at: Date,
-        winners_entry_id: [
-            { type: String, required: true }
-        ],
+        description: String,
+        winnerCount: { type: Number, required: true },
+        createdAt: { type: Date, required: true },
+        paused: { type: Boolean, required: true },
+        remaining: Number,
+        ended: { type: Boolean, required: true },
+        dueDate: { type: Date, required: true },
+        riggedUsersId: { type: [{ type: String, required: true }], required: false },
+        winnersEntryId: [{ type: String, required: true }],
     });
 
     public static giveawayEntrySchema = new Schema({
-        id: { type: String, required: true },
-        giveaway_id: { type: String, required: true },
-        user_id: { type: String, required: true },
-        created_at: { type: Date, required: true, default: Date.now },
+        id: { type: String, required: true, unique: true },
+        giveawayId: { type: String, required: true },
+        userId: { type: String, required: true },
+        chance: { type: Number, required: true },
+        createdAt: { type: Date, required: true }
     });
 
     public giveawaySchema = MongodbDatabaseAdapter.giveawaySchema;

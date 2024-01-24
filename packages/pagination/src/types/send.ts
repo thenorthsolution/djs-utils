@@ -1,5 +1,5 @@
 import { Message, MessageResolvable, RepliableInteraction } from 'discord.js';
-import { SendAs } from '..';
+import { SendAs } from './enums';
 
 export interface InteractionPaginationSendOptions {
     command: RepliableInteraction;

@@ -1,90 +1,91 @@
-import { IGiveaway, IGiveawayEntry } from '../../types/giveaway';
-import { BaseDatabaseAdapter } from '../BaseDatabaseAdapter';
+import { BaseGiveawayDatabaseAdapter, GiveawayDatabaseAdapterDataFilterOptions } from '../BaseGiveawayDatabaseAdapter';
+import { RawGiveaway, RawGiveawayEntry } from '../../types/structures';
 import { GiveawayManager } from '../GiveawayManager';
 import type Sqlite3 from 'better-sqlite3';
-import path from 'path';
-import { mkdir } from 'fs/promises';
+import path from 'node:path';
 
 export interface Sqlite3DatabaseAdapterOptions {
-    file?: string;
-    databaseOptions?: Sqlite3.Options;
+    database: string|Buffer|Sqlite3.Database|[string|Buffer, Sqlite3.Options];
+    tables?: {
+        giveaways?: string;
+        giveawayEntries?: string;
+    }
 }
 
-export interface RawSqlite3Giveaway extends Omit<IGiveaway, 'endsAt'|'createdAt'|'endedAt'|'winnersEntryId'|'ended'> {
-    endsAt: string;
+export type Sqlite3Boolean = 'true'|'false';
+
+export interface RawSqlite3Giveaway extends Omit<RawGiveaway, 'createdAt'|'paused'|'ended'|'dueDate'|'riggedUsersId'|'winnersEntryId'> {
     createdAt: string;
-    ended: 'true'|'false';
-    endedAt: string|null;
+    paused: Sqlite3Boolean;
+    ended: Sqlite3Boolean;
+    dueDate: string;
+    riggedUsersId: string|null;
     winnersEntryId: string;
 }
 
-export interface RawSqlite3GiveawayEntry extends Omit<IGiveawayEntry, 'createdAt'> {
+export interface RawSqlite3GiveawayEntry extends Omit<RawGiveawayEntry, 'createdAt'> {
     createdAt: string;
 }
 
-export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
-    readonly file: string = path.join(process.cwd(), 'giveaways.db');
-
+export class Sqlite3DatabaseAdapter extends BaseGiveawayDatabaseAdapter {
+    public static Database?: typeof Sqlite3;
     public database!: Sqlite3.Database;
+    public tables: Required<Exclude<Sqlite3DatabaseAdapterOptions['tables'], undefined>> = {
+        giveaways: 'Giveaways',
+        giveawayEntries: 'GiveawayEntries'
+    };
 
-    constructor(private _options?: Sqlite3DatabaseAdapterOptions) {
+    constructor(readonly options?: Sqlite3DatabaseAdapterOptions) {
         super();
-
-        try {
-            require.resolve('better-sqlite3');
-        } catch(err) {
-            throw new Error('Unable to find required dependency: better-sqlite3');
-        }
-
-        this.file = _options?.file ?? this.file;
     }
 
     public async start(manager: GiveawayManager<this>): Promise<void> {
-        await mkdir(path.dirname(this.file), { recursive: true });
-
-        this.database = require('better-sqlite3')(this.file, this._options?.databaseOptions);
+        this.database = await Sqlite3DatabaseAdapter.resolveDatabase(this.options?.database ?? path.join(process.cwd(), '.cache/database.db'));
 
         this.database.exec(`
-            CREATE TABLE IF NOT EXISTS "Giveaways" (
+            CREATE TABLE IF NOT EXISTS "${this.tables.giveaways}" (
                 "id" TEXT NOT NULL PRIMARY KEY,
                 "guildId" TEXT NOT NULL,
                 "channelId" TEXT NOT NULL,
                 "messageId" TEXT NOT NULL,
-                "authorId" TEXT,
+                "hostId" TEXT,
                 "name" TEXT NOT NULL,
+                "description" TEXT,
                 "winnerCount" INTEGER NOT NULL DEFAULT 1,
-                "endsAt" DATETIME NOT NULL,
                 "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "paused" BOOLEAN NOT NULL DEFAULT false,
+                "remaining" INTEGER,
                 "ended" BOOLEAN NOT NULL DEFAULT false,
-                "endedAt" DATETIME,
-                "winnersEntryId" TEXT NOT NULL DEFAULT "[]"
+                "dueDate" DATETIME NOT NULL,
+                "riggedUsersId" TEXT DEFAULT '[]',
+                "winnersEntryId" TEXT NOT NULL DEFAULT '[]'
             );
 
-            CREATE TABLE IF NOT EXISTS "GiveawayEntries" (
+            CREATE TABLE IF NOT EXISTS "${this.tables.giveawayEntries}" (
                 "id" TEXT NOT NULL PRIMARY KEY,
                 "giveawayId" TEXT NOT NULL,
                 "userId" TEXT NOT NULL,
+                "chance" INTEGER NOT NULL,
                 "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT "GiveawayEtries_giveawayId_fkey" FOREIGN KEY ("giveawayId") REFERENCES "Giveaways" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+                CONSTRAINT "${this.tables.giveawayEntries}_giveawayId_fkey" FOREIGN KEY ("giveawayId") REFERENCES "${this.tables.giveaways}" ("id") ON DELETE CASCADE ON UPDATE CASCADE
             );
 
-            CREATE UNIQUE INDEX IF NOT EXISTS "Giveaways_id_key" ON "Giveaways"("id");
-            CREATE UNIQUE INDEX IF NOT EXISTS "Giveaways_messageId_key" ON "Giveaways"("messageId");
-            CREATE UNIQUE INDEX IF NOT EXISTS "GiveawayEtries_id_key" ON "GiveawayEntries"("id");
+            CREATE UNIQUE INDEX IF NOT EXISTS "${this.tables.giveaways}_id_key" ON "${this.tables.giveaways}"("id");
+            CREATE UNIQUE INDEX IF NOT EXISTS "${this.tables.giveawayEntries}_id_key" ON "${this.tables.giveawayEntries}"("id");
         `);
 
         await super.start(manager);
     }
 
-    public async fetchGiveaways(options?: { filter?: Partial<IGiveaway>|undefined; count?: number | undefined; } | undefined): Promise<IGiveaway[]> {
-        let query = `SELECT * FROM 'Giveaways'`;
+    public async fetchGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
+        let query = `SELECT * FROM '${this.tables.giveaways}'`;
         let values: string[] = [];
 
-        if (options?.filter) {
+        if (filter?.filter) {
             query += ` WHERE`;
 
-            Object.keys(options.filter).forEach((key, index) => {
-                let value: any = (options.filter ?? {})[key as keyof IGiveaway];
+            Object.keys(filter.filter).forEach((key, index) => {
+                let value: any = filter.filter![key as keyof RawGiveaway];
                 if (value === undefined) return;
 
                 value = Sqlite3DatabaseAdapter.parseValue(value);
@@ -94,57 +95,24 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             });
         }
 
-        if (typeof options?.count === 'number') {
-            query += `LIMIT ${options.count}`;
-        }
-
+        if (typeof filter?.count === 'number') query += `LIMIT ${filter.count}`;
         return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveaway(g as RawSqlite3Giveaway));
     }
 
-    public async fetchGiveaway(giveawayId: string): Promise<IGiveaway|undefined> {
-        const data = this.database.prepare(`SELECT * FROM 'Giveaways' WHERE id = ?`).get(giveawayId) as RawSqlite3Giveaway|undefined;
-        return data ? Sqlite3DatabaseAdapter.parseGiveaway(data) : undefined;
-    }
+    public async updateGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>, data: Partial<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        if (!giveaways.length) return [];
 
-    public async createGiveaway(data: IGiveaway): Promise<IGiveaway> {
-        this.database.prepare(`INSERT INTO 'Giveaways' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-            data.id,
-            data.guildId,
-            data.channelId,
-            data.messageId,
-            data.authorId,
-            data.name,
-            data.winnerCount,
-            data.endsAt.toISOString(),
-            data.createdAt.toISOString(),
-            String(data.ended),
-            data.endedAt?.toISOString() ?? null,
-            JSON.stringify(data.winnersEntryId)
-        );
-
-        this.emit('giveawayCreate', data);
-
-        return data;
-    }
-
-    public async updateGiveaway(giveawayId: string, data: Partial<IGiveaway>): Promise<IGiveaway> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to update giveaway! Giveaway id not found: ${giveawayId}`);
-
-        const newGiveaway = {
-            ...giveaway,
-            ...data
-        };
-
-        let query = `UPDATE 'Giveaways'`;
+        let query = `UPDATE '${this.tables.giveaways}'`;
         let values: string[] = [];
-        let keys = Object.keys(data);
+
+        const keys = Object.keys(data);
 
         if (keys.length) {
             query += ` SET`;
 
-            keys.forEach((key, index) => {
-                let value: any = (data ?? {})[key as keyof IGiveaway];
+            keys.forEach(key => {
+                let value: any = data![key as keyof RawGiveaway];
                 if (value === undefined) return;
 
                 value = Sqlite3DatabaseAdapter.parseValue(value)
@@ -154,53 +122,77 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             });
         }
 
-        query += ` WHERE id = ?`;
-        values.push(giveawayId);
+        query += ` WHERE`;
 
-        const updated = this.database.prepare(query).run(...values).changes;
-        if (!updated) throw new Error('Unable to update giveaway! No changes found');
-
-        this.emit('giveawayUpdate', giveaway, newGiveaway);
-
-        return newGiveaway;
-    }
-
-    public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined>;
-    public async deleteGiveaway(filter: Partial<IGiveaway>, count?: number): Promise<IGiveaway[]>;
-    public async deleteGiveaway(filter: string|Partial<IGiveaway>, count?: number): Promise<IGiveaway|IGiveaway[]|undefined> {
-        const findFirst = typeof filter === 'string';
-
-        filter = typeof filter === 'string' ? { id: filter } : filter;
-
-        const giveaways = await this.fetchGiveaways({ filter, count: findFirst ? 1 : count });
-        if (!giveaways.length) return findFirst ? giveaways[0] : giveaways;
-
-        let query = `DELETE FROM 'Giveaways'`;
-        let values: string[] = [];
-
-        if (giveaways.length) {
-            query += ' WHERE';
-            giveaways.forEach((giveaway, index) => {
-                query += ` id = ?${index !== (giveaways.length - 1) ? ' OR' : ''}`;
-                values.push(giveaway.id);
-            })
+        for (const giveaway of giveaways) {
+            query += ` id = ?`;
+            values.push(giveaway.id);
         }
 
-        this.database.prepare(query).run(...values);
-        giveaways.forEach(g => this.emit('giveawayDelete', g));
+        const newGiveaways = giveaways.map(g => ({...g, ...data}));
+        const updated = this.database.prepare(query).run(...values).changes;
+        if (!updated) throw new Error('Unable to update giveaways');
 
-        return findFirst ? giveaways[0] : giveaways;
+        for (const giveaway of newGiveaways) {
+            const oldGiveaway = giveaways.find(g => g.id === giveaway.id)!;
+            this.emit('giveawayUpdate', oldGiveaway, giveaway);
+        }
+
+        return newGiveaways;
     }
 
-    public async fetchGiveawayEntries(options?: { filter?: Partial<IGiveawayEntry>|undefined; count?: number | undefined; } | undefined): Promise<IGiveawayEntry[]> {
-        let query = `SELECT * FROM 'GiveawayEntries'`;
+    public async deleteGiveaways(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveaway>): Promise<RawGiveaway[]> {
+        const giveaways = await this.fetchGiveaways(filter);
+        if (!giveaways.length) return [];
+
+        const entries = this.database.prepare(`SELECT * FROM '${this.tables.giveawayEntries}' WHERE ${giveaways.map(g => 'giveawayId = ?').join(' OR ')}`).all(...giveaways.map(g => g.id)).map(e => Sqlite3DatabaseAdapter.parseGiveawayEntry(e as RawSqlite3GiveawayEntry));
+        const deleted = this.database.prepare(`DELETE FROM '${this.tables.giveaways}' WHERE ${giveaways.map(g => 'id = ?').join(' OR ')}`).run(...giveaways.map(g => g.id)).changes;
+        if (!deleted) throw new Error('Unable to delete giveaways');
+
+        for (const giveaway of giveaways) {
+            for (const entry of entries.filter(e => e.giveawayId === giveaway.id)) {
+                this.emit('giveawayEntryDelete', entry);
+            }
+
+            this.emit('giveawayDelete', giveaway);
+        }
+
+        return giveaways;
+    }
+
+    public async createGiveaway(data: Omit<RawGiveaway, 'id'>): Promise<RawGiveaway> {
+        const id = data.messageId;
+
+        this.database.prepare(`INSERT INTO '${this.tables.giveaways}' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id,
+            data.guildId,
+            data.channelId,
+            data.messageId,
+            data.hostId ?? null,
+            data.name,
+            data.description ?? null,
+            data.winnerCount,
+            data.createdAt.toISOString(),
+            String(data.paused),
+            data.remaining ?? null,
+            String(data.ended),
+            data.dueDate.toISOString(),
+            JSON.stringify(data.riggedUsersId),
+            JSON.stringify(data.winnersEntryId));
+
+        const giveaway = { id, ...data };
+        this.emit('giveawayCreate', giveaway);
+        return giveaway;
+    }
+
+    public async fetchGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        let query = `SELECT * FROM '${this.tables.giveawayEntries}'`;
         let values: string[] = [];
 
-        if (options?.filter) {
+        if (filter?.filter) {
             query += ` WHERE`;
 
-            Object.keys(options.filter).forEach((key, index) => {
-                let value: any = (options.filter ?? {})[key as keyof IGiveawayEntry];
+            Object.keys(filter.filter).forEach((key, index) => {
+                let value: any = filter.filter![key as keyof RawGiveawayEntry];
                 if (value === undefined) return;
 
                 value = Sqlite3DatabaseAdapter.parseValue(value);
@@ -210,119 +202,100 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
             });
         }
 
-        if (typeof options?.count === 'number') {
-            query += `LIMIT ${options.count}`;
-        }
-
+        if (typeof filter?.count === 'number') query += `LIMIT ${filter.count}`;
         return this.database.prepare(query).all(...values).map(g => Sqlite3DatabaseAdapter.parseGiveawayEntry(g as RawSqlite3GiveawayEntry));
     }
 
-    public async fetchGiveawayEntry(entryId: string): Promise<IGiveawayEntry|undefined> {
-        const data = this.database.prepare(`SELECT * FROM 'GiveawayEntries' WHERE id = ?`).get(entryId) as RawSqlite3GiveawayEntry|undefined;
-        return data ? Sqlite3DatabaseAdapter.parseGiveawayEntry(data) : undefined;
-    }
+    public async updateGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>, data: Partial<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
+        if (!entries.length) return [];
 
-    public async createGiveawayEntry(giveawayId: string, data: IGiveawayEntry): Promise<IGiveawayEntry> {
-        const giveaway = await this.fetchGiveaway(giveawayId);
-        if (!giveaway) throw new Error(`Unable to create new giveaway`);
-
-        this.database.prepare(`INSERT INTO 'GiveawayEntries' VALUES (?, ?, ?, ?)`).run(
-            data.id,
-            data.giveawayId,
-            data.userId,
-            data.createdAt.toISOString()
-        );
-
-        this.emit('giveawayEntryCreate', data);
-
-        return data;
-    }
-
-    public async updateGiveawayEntry(entryId: string, data: Partial<IGiveawayEntry>): Promise<IGiveawayEntry> {
-        const entry = await this.fetchGiveawayEntry(entryId);
-        if (!entry) throw new Error(`Unable to update entry! Entry id not found: ${entryId}`);
-
-        const newEntry = {
-            ...entry,
-            ...data
-        };
-
-        let query = `UPDATE 'GiveawayEntries'`;
+        let query = `UPDATE '${this.tables.giveawayEntries}'`;
         let values: string[] = [];
-        let keys = Object.keys(data);
+
+        const keys = Object.keys(data);
 
         if (keys.length) {
             query += ` SET`;
 
-            keys.forEach((key, index) => {
-                let value: any = (data ?? {})[key as keyof IGiveawayEntry];
+            keys.forEach(key => {
+                let value: any = data![key as keyof RawGiveawayEntry];
                 if (value === undefined) return;
 
-                    value = Sqlite3DatabaseAdapter.parseValue(value);
+                value = Sqlite3DatabaseAdapter.parseValue(value)
 
                 query += ` ${key} = ?${key !== (keys[keys.length - 1]) ? ',' : ''}`;
                 values.push(value);
             });
         }
 
-        query += ` WHERE id = ?`;
-        values.push(entryId);
+        query += ` WHERE`;
 
-        const updated = this.database.prepare(query).run(...values).changes;
-        if (!updated) throw new Error('Unable to update entry! No changes found');
-
-        this.emit('giveawayEntryUpdate', entry, newEntry);
-
-        return newEntry;
-    }
-
-    public async deleteGiveawayEntry(giveawayId: string): Promise<IGiveawayEntry|undefined>;
-    public async deleteGiveawayEntry(filter: Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry[]>;
-    public async deleteGiveawayEntry(filter: string|Partial<IGiveawayEntry>, count?: number): Promise<IGiveawayEntry|IGiveawayEntry[]|undefined> {
-        const findFirst = typeof filter === 'string';
-
-        filter = typeof filter === 'string' ? { id: filter } : filter;
-
-        const entries = await this.fetchGiveawayEntries({ filter, count: findFirst ? 1 : count });
-        if (!entries.length) return findFirst ? entries[0] : entries;
-
-        let query = `DELETE FROM 'GiveawayEntries'`;
-        let values: string[] = [];
-
-        if (entries.length) {
-            query += ' WHERE';
-            entries.forEach((entry, index) => {
-                query += ` id = ?${index !== (entries.length - 1) ? ' OR' : ''}`;
-                values.push(entry.id);
-            })
+        for (const entry of entries) {
+            query += ` id = ?`;
+            values.push(entry.id);
         }
 
-        this.database.prepare(query).run(...values);
-        entries.forEach(e => this.emit('giveawayEntryDelete', e));
+        const newEntries = entries.map(g => ({...g, ...data}));
+        const updated = this.database.prepare(query).run(...values).changes;
+        if (!updated) throw new Error('Unable to update entries');
 
-        return findFirst ? entries[0] : entries;
+        for (const entry of newEntries) {
+            const oldEntry = entries.find(e => e.id === entry.id)!;
+            this.emit('giveawayEntryUpdate', oldEntry, entry);
+        }
+
+        return newEntries;
     }
 
-    // Static Methods
+    public async deleteGiveawayEntries(filter: GiveawayDatabaseAdapterDataFilterOptions<RawGiveawayEntry>): Promise<RawGiveawayEntry[]> {
+        const entries = await this.fetchGiveawayEntries(filter);
+        if (!entries.length) return [];
 
-    public static parseGiveaway(giveaway: IGiveaway): RawSqlite3Giveaway;
-    public static parseGiveaway(giveaway: RawSqlite3Giveaway): IGiveaway;
-    public static parseGiveaway(giveaway: IGiveaway|RawSqlite3Giveaway): IGiveaway|RawSqlite3Giveaway {
+        const deleted = this.database.prepare(`DELETE FROM '${this.tables.giveawayEntries}' WHERE ${entries.map(e => 'id = ?').join(' OR ')}`).run(...entries.map(e => e.id)).changes;
+        if (!deleted) throw new Error('Unable to delete entries');
+
+        for (const entry of entries) {
+            this.emit('giveawayEntryDelete', entry);
+        }
+
+        return entries;
+    }
+
+    public async createGiveawayEntry(data: Omit<RawGiveawayEntry, 'id'>): Promise<RawGiveawayEntry> {
+        const id = Number(BigInt(Date.now()) << 22n).toString();
+
+        this.database.prepare(`INSERT INTO '${this.tables.giveawayEntries}' VALUES (?, ?, ?, ?, ?)`).run(
+            id,
+            data.giveawayId,
+            data.userId,
+            data.chance,
+            data.createdAt.toISOString()
+        );
+
+        const entry = { id, ...data };
+        this.emit('giveawayEntryCreate', entry);
+
+        return entry;
+    }
+
+    public static parseGiveaway(giveaway: RawGiveaway): RawSqlite3Giveaway;
+    public static parseGiveaway(giveaway: RawSqlite3Giveaway): RawGiveaway;
+    public static parseGiveaway(giveaway: RawGiveaway|RawSqlite3Giveaway): RawGiveaway|RawSqlite3Giveaway {
         return {
             ...giveaway,
             createdAt: this.parseDate(giveaway.createdAt) as any,
-            endedAt: (giveaway.endedAt ? this.parseDate(giveaway.endedAt) : null) as any,
-            ended: typeof giveaway.ended === 'string' ? (giveaway.ended === 'true') : giveaway.ended, 
-            endsAt: this.parseDate(giveaway.endsAt) as any,
-            winnersEntryId: typeof giveaway.winnersEntryId === 'string'
-                ? JSON.parse(giveaway.winnersEntryId)
-                : JSON.stringify(giveaway.winnersEntryId)
+            paused: this.parseBoolean(giveaway.paused) as any,
+            ended: this.parseBoolean(giveaway.ended) as any,
+            dueDate: this.parseDate(giveaway.dueDate) as any,
+            riggedUsersId: giveaway.riggedUsersId ? this.parseArray(giveaway.riggedUsersId) : (typeof giveaway.createdAt === 'string' ? undefined : null ) as any,
+            winnersEntryId: this.parseArray(giveaway.winnersEntryId) as any
         };
     }
 
-    public static parseGiveawayEntry(entry: IGiveawayEntry): RawSqlite3GiveawayEntry;
-    public static parseGiveawayEntry(entry: RawSqlite3GiveawayEntry): IGiveawayEntry;
-    public static parseGiveawayEntry(entry: IGiveawayEntry|RawSqlite3GiveawayEntry): IGiveawayEntry|RawSqlite3GiveawayEntry {
+    public static parseGiveawayEntry(entry: RawGiveawayEntry): RawSqlite3GiveawayEntry;
+    public static parseGiveawayEntry(entry: RawSqlite3GiveawayEntry): RawGiveawayEntry;
+    public static parseGiveawayEntry(entry: RawGiveawayEntry|RawSqlite3GiveawayEntry): RawGiveawayEntry|RawSqlite3GiveawayEntry {
         return {
             ...entry,
             createdAt: this.parseDate(entry.createdAt) as any,
@@ -336,14 +309,57 @@ export class Sqlite3DatabaseAdapter extends BaseDatabaseAdapter {
         return typeof date === 'string' ? new Date(date) : date.toISOString();
     }
 
+    public static parseBoolean(data: boolean): string;
+    public static parseBoolean(data: string): boolean;
+    public static parseBoolean(data: string|boolean): string|boolean;
+    public static parseBoolean(data: string|boolean): string|boolean {
+        return typeof data === 'string' ? data === 'true' : String(data);
+    }
+
     public static parseValue(value: string|string[]|number|boolean|Date|null): string|number|null {
         if (value instanceof Date) return this.parseDate(value);
         if (Array.isArray(value)) return JSON.stringify(value);
         if (value === null) return null;
         if (value === undefined) return '';
         if (typeof value === 'number') return value;
-        if (typeof value === 'boolean') return value === true ? 'true' : 'false';
+        if (typeof value === 'boolean') return this.parseBoolean(value);
 
         return String(value);
+    }
+
+    public static parseArray<T extends any = any>(value: string): T[];
+    public static parseArray<T extends any = any>(value: T[]): string;
+    public static parseArray<T extends any = any>(value: string|T[]): string|T[];
+    public static parseArray<T extends any = any>(value: string|T[]): string|T[] {
+        return typeof value === 'string' ? JSON.parse(value) as T[] : JSON.stringify(value);
+    }
+
+    public static async resolveDatabase(database: Sqlite3DatabaseAdapterOptions['database']): Promise<Sqlite3.Database> {
+        const Database = await Sqlite3DatabaseAdapter.importBetterSqlite3Database();
+
+        let file: string|Buffer;
+        let options: Sqlite3.Options|null = null;
+
+        if (typeof database === 'string' || Buffer.isBuffer(database)) {
+            file = database;
+        } else if (Array.isArray(database)) {
+            file = database[0];
+            options = database[1];
+        } else {
+            return database;
+        }
+
+        return new Database(file, options ?? undefined);
+    }
+
+    public static async importBetterSqlite3Database(): Promise<typeof Sqlite3> {
+        if (Sqlite3DatabaseAdapter.Database) return Sqlite3DatabaseAdapter.Database;
+
+        const database = await import('better-sqlite3').then(d => d.default).catch(() => null);
+        if (!database) throw new Error('"better-sqlite3" package is required to use sqlite3');
+
+        Sqlite3DatabaseAdapter.Database = database;
+
+        return database;
     }
 }

@@ -13,13 +13,14 @@ npm i @falloutstudios/djs-giveaways discord.js
 
 ## Available Database Adapter
 
-- [`JsonDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JsonDatapaseAdapter.html)
+- [`JSONDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JSONDatapaseAdapter.html)
 - [`MongodbDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.MongodbDatabaseAdapter.html)
 - [`Sqlite3DatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.Sqlite3DatabaseAdapter.html)
 
 ## Usage
 
 ```js
+// @ts-check
 import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
 import { Client, SlashCommandBuilder, userMention } from 'discord.js';
 import ms from 'ms';
@@ -31,7 +32,7 @@ const client = new Client({
 
 // The giveaway manager
 const giveaways = new GiveawayManager({
-    databaseAdapter: new MongodbDatabaseAdapter({
+    database: new MongodbDatabaseAdapter({
         mongooseConnection: `mongodb://username:password@host:port/database`
     }),
     client
@@ -67,7 +68,6 @@ client.on('ready', async () => {
             .addStringOption(giveaway => giveaway
                 .setName('giveaway')
                 .setDescription('The giveaway you want to end')
-                .setAutocomplete(true)
                 .setRequired(true)
             )
             .addBooleanOption(cancel => cancel
@@ -81,7 +81,6 @@ client.on('ready', async () => {
             .addStringOption(giveaway => giveaway
                 .setName('giveaway')
                 .setDescription('The giveaway you want to end')
-                .setAutocomplete(true)
                 .setRequired(true)
             )
         );
@@ -93,7 +92,7 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand() || interaction.commandName !== 'giveaway' || !interaction.inCachedGuild()) return;
+    if (!interaction.isChatInputCommand() || interaction.commandName !== 'giveaway' || !interaction.inCachedGuild() || !interaction.channel) return;
 
     const subcommand = interaction.options.getSubcommand(true);
 
@@ -104,13 +103,14 @@ client.on('interactionCreate', async interaction => {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const message = await giveaways.createGiveaway({
+        const giveaway = await giveaways.createGiveaway({
             channel: interaction.channel,
             endsAt: duration,
             name,
             winnerCount: winners
         });
 
+        const message = await giveaways.fetchGiveawayMessage(giveaway);
         await interaction.editReply(message.url);
     } else if (subcommand === 'end') {
         const giveawayId = interaction.options.getString('giveaway', true);
@@ -118,34 +118,34 @@ client.on('interactionCreate', async interaction => {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const giveaway = (await giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        const giveaway = (await giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
         if (!giveaway) {
             await interaction.editReply(`Giveaway not found`);
             return;
         }
 
-        await giveaways.endGiveaway(giveaway.id, !cancel);
+        await giveaways.endGiveaway(giveaway.id, cancel);
         await interaction.editReply(`Ended giveaway`);
     } else if (subcommand === 'reroll') {
         const giveawayId = interaction.options.getString('giveaway', true);
 
         await interaction.deferReply({ ephemeral: true });
 
-        const giveaway = (await giveaways.databaseAdapter.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
+        const giveaway = (await giveaways.database.fetchGiveaways({ filter: { messageId: giveawayId } }))[0];
         if (!giveaway) {
             await interaction.editReply(`Giveaway not found`);
             return;
         }
 
-        const winners = await giveaways.getRandomGiveawayEntries(giveaway.id, giveaway.winnerCount);
-        const message = await giveaways.getGiveawayMessage(giveaway);
+        const winners = await giveaways.selectGiveawayEntries(giveaway.id, { winnerCount: giveaway.winnerCount, ignoredUsersId: giveaway.winnersEntryId });
+        const message = await giveaways.fetchGiveawayMessage(giveaway);
 
-        if (!winners.selected.length) {
+        if (!winners.selectedEntries.length) {
             await interaction.editReply(`No winners selected from reroll`);
             return;
         }
 
-        await message?.reply(`${winners.selected.map(e => userMention(e.userId)).join('')} won the reroll!`);
+        await message?.reply(`${winners.selectedEntries.map(e => userMention(e.userId)).join('')} won the reroll!`);
         await interaction.editReply(`Reroll successfull`);
     }
 });

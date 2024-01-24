@@ -1,81 +1,309 @@
-import { APIEmbed, Awaitable, BaseMessageOptions, ButtonBuilder, ButtonInteraction, ButtonStyle, Channel, Client, Collection, ComponentType, EmbedBuilder, Guild, Interaction, JSONEncodable, Message, PartialMessage, inlineCode, time, userMention } from 'discord.js';
-import { CreateGiveawayMessageOptions, CreateGiveawayOptions, IGiveaway, IGiveawayEntry, createGiveawayEmbedOptions } from '../types/giveaway';
-import { TypedEmitter, getRandomKey } from 'fallout-utility';
-import { BaseDatabaseAdapter } from './BaseDatabaseAdapter';
-import { GiveawayError } from './GiveawayError';
-import { randomBytes } from 'crypto';
+import { GiveawayManagerButtonOptions, GiveawayManagerCreateGiveawayEmbedOptions, GiveawayManagerCreateGiveawayMessageOptions, GiveawayManagerCreateGiveawayOptions, GiveawayManagerEntriesData, GiveawayManagerSelectGiveawayEntriesOptions, RawGiveaway, RawGiveawayEntry } from '../types/structures';
+import { APIEmbed, BaseMessageOptions, ButtonInteraction, ButtonStyle, Client, Collection, ComponentType, EmbedBuilder, GuildTextBasedChannel, InteractionButtonComponentData, Message, inlineCode, time, userMention } from 'discord.js';
+import { GiveawayManagerEventHandler } from './GiveawayManagerEventHandler';
+import { BaseGiveawayDatabaseAdapter } from './BaseGiveawayDatabaseAdapter';
+import { Awaitable, JSONEncodable, TypedEmitter } from 'fallout-utility';
+import { GiveawayManagerError } from './GiveawayManagerError';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
-    giveawayCreate: [giveaway: IGiveaway];
-    giveawayEnd: [giveaway: IGiveaway, entries: { entries: IGiveawayEntry[]; selected: IGiveawayEntry[]; }];
-    giveawayDelete: [giveaway: IGiveaway];
-    giveawayEntryAdd: [entry: IGiveawayEntry, giveawayId: string];
-    giveawayEntryDelete: [entry: IGiveawayEntry, giveawayId: string];
+    giveawayCreate: [giveaway: RawGiveaway];
+    giveawayEnd: [giveaway: RawGiveaway, winnerData: GiveawayManagerEntriesData];
+    giveawayDelete: [giveaway: RawGiveaway, entries: RawGiveawayEntry[]];
+    giveawayEntryAdd: [entry: RawGiveawayEntry];
+    giveawayEntryDelete: [entry: RawGiveawayEntry];
 }
 
-export interface GiveawayManagerOptions<A extends BaseDatabaseAdapter = BaseDatabaseAdapter> {
-    databaseAdapter: A;
+export interface GiveawayManagerOptions<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> {
+    database: Database;
     client: Client;
-    joinButtonCustomId?: string;
-    joinButtonEmoji?: string;
-    createEmbed?: (giveaway: createGiveawayEmbedOptions) => Awaitable<JSONEncodable<APIEmbed>|APIEmbed>;
+    dmWinners?: boolean;
+    joinButtonData?: GiveawayManagerButtonOptions;
+    maxTimeoutMs?: number;
+    createEmbed?: (data: GiveawayManagerCreateGiveawayEmbedOptions) => Awaitable<JSONEncodable<APIEmbed>|APIEmbed>;
     onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
+    selectWinnerEntries?: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]>;
 }
 
-export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter> extends TypedEmitter<GiveawayManagerEvents> {
-    readonly client: Client;
-    readonly databaseAdapter: A;
-    readonly giveawayTimouts: Collection<string, { giveawayId: string; timeout: NodeJS.Timeout; }> = new Collection();
-    readonly joinButtonCustomId: string = 'giveaway-join';
-    readonly joinButtonEmoji: string = '🎉';
-    readonly createEmbed: Exclude<GiveawayManagerOptions<A>['createEmbed'], undefined> = GiveawayManager.defaultCreateEmbed;
-    readonly onBeforeHandleInteraction: Exclude<GiveawayManagerOptions<A>['onBeforeHandleInteraction'], undefined> = () => true;
+export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends TypedEmitter {
+    public static readonly joinButton: Omit<InteractionButtonComponentData, 'disabled'|'type'> = {
+        emoji: '🎉',
+        customId: '@falloutstudios/djs-giveaways',
+        style: ButtonStyle.Primary
+    };
 
-    private _ready: boolean = false;
+    public static createEmbed<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter>(options: GiveawayManagerCreateGiveawayEmbedOptions<Database>): EmbedBuilder {
+        const embed = new EmbedBuilder();
 
-    constructor(options: GiveawayManagerOptions<A>) {
-        super();
+        embed.setTitle(options.giveaway.name);
+        embed.setAuthor({ name: '🎉 Giveaway' });
+        embed.setDescription(options.giveaway.description ?? null);
+        embed.setColor(options.giveaway.ended ? 'DarkButNotBlack' : options.giveaway.paused ? 'Grey' : 'Blue');
 
-        this.client = options.client;
-        this.databaseAdapter = options.databaseAdapter;
-        this.joinButtonCustomId = options.joinButtonCustomId ?? this.joinButtonCustomId;
-        this.joinButtonEmoji = options.joinButtonEmoji ?? this.joinButtonEmoji;
-        this.createEmbed = options.createEmbed ?? this.createEmbed;
-        this.onBeforeHandleInteraction = options.onBeforeHandleInteraction ?? this.onBeforeHandleInteraction;
+        if (!options.giveaway.paused) embed.addFields({
+            name: `${inlineCode('⏲️')} End${options.giveaway.ended ? 'ed' : 's At'}`,
+            value: time(options.giveaway.dueDate, 'R') + (!options.giveaway.ended ? ` (${time(options.giveaway.dueDate)})` : '')
+        });
 
-        this._err = this._err.bind(this);
-        this._guildDelete = this._guildDelete.bind(this);
-        this._channelDelete = this._channelDelete.bind(this);
-        this._messageDelete = this._messageDelete.bind(this);
-        this._messageDeleteBulk = this._messageDeleteBulk.bind(this);
-        this._interactionCreate = this._interactionCreate.bind(this);
+        embed.addFields({
+            name: `${inlineCode('👥')} Entries`,
+            value: `${options.entries?.allEntries ? inlineCode(options.entries.allEntries.length.toLocaleString()) : '**No entries**'}`
+        });
+
+        embed.setFooter({ text: options.giveaway.ended ? 'Ended' : options.giveaway.paused ? 'Paused' : 'Active' });
+        embed.setTimestamp(options.giveaway?.ended ? options.giveaway.dueDate : options.giveaway.createdAt);
+
+        if (options.giveaway.hostId) embed.addFields({ name: `${inlineCode('👤')} Hosted by`, value: `${userMention(options.giveaway.hostId)}` });
+
+        if (!options.giveaway.ended) {
+            if (options.giveaway.winnerCount > 1) embed.addFields({ name: `${inlineCode('🎁')} Winners`, value: `${options.giveaway.winnerCount.toLocaleString()}` });
+        } else {
+            embed.addFields({
+                name: (inlineCode('🏆') + ' Winner') + (options.entries && options.entries.winnersUserId.length > 1 ? 's' : ''),
+                value: !options.entries?.winnersUserId.length ? inlineCode('none') : options.entries.winnersUserId.map(id => `${userMention(id)} ${inlineCode(id)}`).join('\n')
+            });
+        }
+
+        return embed;
     }
 
-    /**
-     * Toggles user's giveaway entry
-     * @param giveawayId The giveaway id
-     * @param userId The user id
-     * @param updateMessage Updates the giveaway message
-     * @returns Returns a giveaway entry data if entry is added, null if removed
-     */
-    public async toggleGiveawayEntry(giveawayId: string, userId: string, updateMessage: boolean = true): Promise<IGiveawayEntry|null> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
+    public static async selectWinnerEntries(entries: RawGiveawayEntry[], needed: number): Promise<RawGiveawayEntry[]> {
+        const shuffled = entries.sort(() => Math.random() - 0.5);
+        const winners: RawGiveawayEntry[] = [];
 
-        let entries = await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId } });
+        for (const entry of shuffled) {
+            if (winners.some(w => w.userId === entry.userId)) continue;
+
+            winners.push(entry);
+            if (winners.length >= needed) break;
+        }
+
+        return winners;
+    }
+
+    public readonly database: Database;
+    public readonly client: Client;
+    public readonly joinButton: GiveawayManagerButtonOptions = GiveawayManager.joinButton;
+    public readonly maxTimeoutMs: number = 2147483648;
+    public readonly giveawayTimeouts: Collection<string, { giveawayId: string; timeout: NodeJS.Timeout; }> = new Collection();
+
+    public createEmbed: (data: GiveawayManagerCreateGiveawayEmbedOptions) => Awaitable<JSONEncodable<APIEmbed>|APIEmbed> = GiveawayManager.createEmbed;
+    public onBeforeHandleInteraction?: (interaction: ButtonInteraction) => Awaitable<boolean>;
+    public selectWinnerEntries: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]> = GiveawayManager.selectWinnerEntries;
+
+    public ready: boolean = false;
+
+    private eventHandler: GiveawayManagerEventHandler = new GiveawayManagerEventHandler(this);
+
+    constructor(options: GiveawayManagerOptions<Database>) {
+        super();
+
+        this.database = options.database;
+        this.client = options.client;
+        this.joinButton = options.joinButtonData ?? this.joinButton;
+        this.maxTimeoutMs = options.maxTimeoutMs ?? this.maxTimeoutMs;
+        this.createEmbed = options.createEmbed ?? GiveawayManager.createEmbed;
+        this.onBeforeHandleInteraction = options.onBeforeHandleInteraction;
+        this.selectWinnerEntries = options.selectWinnerEntries ?? GiveawayManager.selectWinnerEntries;
+    }
+
+    public async start(): Promise<void> {
+        if (!this.client.isReady()) throw new GiveawayManagerError('Discord.js client is not yet ready or logged in');
+        if (this.ready) throw new GiveawayManagerError('Giveaway manager is already ready');
+
+        await this.database.start(this);
+        this.database.on('error', this._err);
+        this.client.on('guildDelete', this.eventHandler.guildDelete);
+        this.client.on('channelDelete', this.eventHandler.channelDelete);
+        this.client.on('messageDelete', this.eventHandler.messageDelete);
+        this.client.on('messageDeleteBulk', this.eventHandler.messageDeleteBulk);
+        this.client.on('interactionCreate', this.eventHandler.interactionCreate);
+
+        this.ready = true;
+
+        const giveaways = await this.database.fetchGiveaways({ filter: { ended: false, paused: false } });
+
+        for (const giveaway of giveaways) {
+            await this.createGiveawayTimeout(giveaway.id, giveaway.dueDate).catch(err => this.emit(err));
+        }
+    }
+
+    public async destroy(): Promise<void> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        this.database.removeListener('error', this._err);
+        this.client.removeListener('guildDelete', this.eventHandler.guildDelete);
+        this.client.removeListener('channelDelete', this.eventHandler.channelDelete);
+        this.client.removeListener('messageDelete', this.eventHandler.messageDelete);
+        this.client.removeListener('messageDeleteBulk', this.eventHandler.messageDeleteBulk);
+        this.client.removeListener('interactionCreate', this.eventHandler.interactionCreate);
+
+        await this.database.destroy();
+
+        for (const giveaway of this.giveawayTimeouts.values()) {
+            clearTimeout(giveaway.timeout);
+        }
+
+        this.giveawayTimeouts.clear();
+        this.ready = false;
+    }
+
+    public async createGiveaway(options: GiveawayManagerCreateGiveawayOptions): Promise<RawGiveaway> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+        if (typeof options.endsAt === 'number' && (Number.isNaN(options.endsAt) || !Number.isFinite(options.endsAt) || options.endsAt <= 0)) throw new GiveawayManagerError('Giveaway duration must be a positive integer');
+
+        const createdAt = new Date();
+        const dueDate = typeof options.endsAt === 'number' ? new Date(Date.now() + options.endsAt) : options.endsAt;
+        const duration = typeof options.endsAt === 'number' ? options.endsAt : options.endsAt.getTime() - Date.now();
+
+        const partialGiveaway: GiveawayManagerCreateGiveawayMessageOptions['giveaway'] = {
+            hostId: options.hostId,
+            name: options.name,
+            description: options.description,
+            winnerCount: options.winnerCount ?? 1,
+            createdAt,
+            paused: false,
+            remaining: duration,
+            ended: false,
+            dueDate,
+            riggedUsersId: options.riggedUsersId,
+            winnersEntryId: []
+        };
+
+        const message = await options.channel.send({
+            ...await this.createGiveawayMessageData({ giveaway: partialGiveaway }),
+            ...(options.content ? { content: options.content } : {})
+        });
+
+        const giveaway = await this.database.createGiveaway({
+            ...partialGiveaway,
+            guildId: message.guildId,
+            channelId: message.channelId,
+            messageId: message.id
+        }).catch(err => {
+            message.delete().catch(() => null);
+            throw err;
+        });
+
+        this.createGiveawayTimeout(giveaway.id, dueDate);
+        this.emit('giveawayCreate', giveaway);
+        return giveaway;
+    }
+
+    public async pauseGiveaway(id: string): Promise<RawGiveaway> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        const giveaway = (await this.database.fetchGiveaways({ filter: { id } }))[0];
+        if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
+        if (giveaway.ended) throw new GiveawayManagerError('Giveaway is already ended');
+        if (giveaway.paused) return giveaway;
+
+        this.deleteGiveawayTimeout(id);
+
+        const newGiveaway = (await this.database.updateGiveaways({ filter: { id } }, {
+            paused: true,
+            remaining: giveaway.dueDate.getTime() - Date.now()
+        }))[0];
+
+        const message = await this.fetchGiveawayMessage(giveaway);
+        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway, entries: await this.fetchGiveawayEntries(giveaway.id) }));
+        return newGiveaway;
+    }
+
+    public async resumeGiveaway(id: string): Promise<RawGiveaway> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        const giveaway = (await this.database.fetchGiveaways({ filter: { id } }))[0];
+        if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
+        if (giveaway.ended) throw new GiveawayManagerError('Giveaway is already ended');
+        if (!giveaway.paused || !giveaway.remaining) return giveaway;
+
+        const newGiveaway = (await this.database.updateGiveaways({ filter: { id} }, {
+            paused: false,
+            dueDate: new Date(Date.now() + giveaway.remaining),
+            remaining: 0
+        }))[0];
+
+        const message = await this.fetchGiveawayMessage(giveaway);
+        await message.edit(await this.createGiveawayMessageData({ giveaway: newGiveaway, entries: await this.fetchGiveawayEntries(giveaway.id) }));
+
+        this.createGiveawayTimeout(id, newGiveaway.dueDate);
+        return newGiveaway;
+    }
+
+    public async endGiveaway(id: string, cancel: boolean = false): Promise<GiveawayManagerEntriesData|null> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        this.deleteGiveawayTimeout(id);
+
+        const giveaway = (await this.database.fetchGiveaways({ filter: { id } }))[0];
+        if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
+
+        const entries: GiveawayManagerEntriesData = cancel !== true
+            ? await this.selectGiveawayEntries(id)
+            : {
+                allEntries: await this.database.fetchGiveawayEntries({ filter: { giveawayId: id } }),
+                riggedUsersId: giveaway.riggedUsersId ?? [],
+                selectedEntries: [],
+                winnersUserId: []
+            };
+
+        const message = await this.fetchGiveawayMessage(giveaway);
+        if (!message) {
+            this.database.deleteGiveaways({ filter: { id } });
+            throw new GiveawayManagerError('Giveaway message not found');
+        }
+
+        const endedGiveaway = (await this.database.updateGiveaways({ filter: { id } }, {
+            ended: true,
+            dueDate: new Date(),
+            remaining: 0,
+            paused: false,
+            winnersEntryId: entries.winnersUserId
+        }))[0];
+
+        this.emit('giveawayEnd', endedGiveaway, entries);
+
+        await message.edit(await this.createGiveawayMessageData({
+            giveaway: endedGiveaway,
+            entries
+        }));
+
+        return cancel ? null : entries;
+    }
+
+    public async deleteGiveaway(id: string, deleteMessage: boolean = true): Promise<void> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        const giveaway = (await this.database.deleteGiveaways({ filter: { id } }))[0];
+        if (!giveaway) return;
+
+        this.deleteGiveawayTimeout(id);
+        this.emit('giveawayDelete', giveaway);
+
+        const message = await this.fetchGiveawayMessage(giveaway).catch(() => null);
+        if (!message) return;
+
+        if (deleteMessage) await message.delete();
+    }
+
+    public async toggleUserEntry(giveawayId: string, userId: string, updateMessage: boolean = true): Promise<RawGiveawayEntry|null> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        let entries = await this.database.fetchGiveawayEntries({ filter: { giveawayId } });
         let entry = entries.find(e => e.userId === userId) ?? null;
 
         if (entry) {
-            await this.databaseAdapter.deleteGiveawayEntry(entry.id);
+            await this.database.deleteGiveawayEntries({ filter: { id: entry.id } });
             entries = entries.filter(e => entry?.id !== e.id);
 
             this.emit('giveawayEntryDelete', entry, giveawayId);
             entry = null;
         } else {
-            entry = await this.databaseAdapter.createGiveawayEntry(giveawayId, {
-                id: this.createDataId(),
+            entry = await this.database.createGiveawayEntry({
                 createdAt: new Date(),
                 giveawayId,
+                chance: 1,
                 userId
             });
 
@@ -84,388 +312,148 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
         }
 
         if (updateMessage) {
-            const giveaway = await this.databaseAdapter.fetchGiveaway(giveawayId);
-            if (!giveaway) throw new GiveawayError(`Giveaway id not found: ${giveawayId}`)
+            const giveaway = (await this.database.fetchGiveaways({ filter: { id: giveawayId } }))[0];
+            if (!giveaway) throw new GiveawayManagerError(`Giveaway id not found: ${giveawayId}`)
 
-            const message = await this.getGiveawayMessage(giveaway);
+            const message = await this.fetchGiveawayMessage(giveaway);
             if (!message) {
-                await this.databaseAdapter.deleteGiveaway(giveawayId);
-                throw new GiveawayError(`Giveaway message not found!`);
+                await this.database.deleteGiveaways({ filter: { id: giveawayId } });
+                throw new GiveawayManagerError(`Giveaway message not found!`);
             }
 
-            await message.edit(await this.createGiveawayMessageOptions({
-                ...giveaway,
-                entries: entries.length
-            }));
+            await message.edit(await this.createGiveawayMessageData({ giveaway, entries: await this.fetchGiveawayEntries(giveawayId) }));
         }
 
         return entry;
     }
 
-    /**
-     * Creates a giveaway
-     * @param options Giveaway options
-     * @returns The giveaway message
-     */
-    public async createGiveaway(options: CreateGiveawayOptions): Promise<Message> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
-
-        const createdAt = new Date();
-        const endsAt = typeof options.endsAt === 'number' ? new Date(Date.now() + options.endsAt) : options.endsAt;
-        const duration = typeof options.endsAt === 'number' ? options.endsAt : options.endsAt.getTime() - Date.now();
-        const channel = options.channel;
-
-        if (!isFinite(duration) || isNaN(duration) || duration === 0 || duration > 2147483647) throw new GiveawayError('Duration must be a positive number below or equal to 25 days (32 bit integer limit)');
-
-        const data: CreateGiveawayMessageOptions = {
-            name: options.name,
-            authorId: options.authorId,
-            winnerCount: options.winnerCount ?? 1,
-            createdAt,
-            endsAt,
-            ended: false,
-            endedAt: null,
-            winnersEntryId: [],
-            entries: 0,
-        };
-
-        const message = await channel.send({
-            ...(await this.createGiveawayMessageOptions(data)),
-            content: options.content
-        });
-
-        data.entries = undefined;
-
-        const giveaway = await this.databaseAdapter.createGiveaway({
-            ...data,
-            id: this.createDataId(),
-            guildId: message.guildId,
-            channelId: message.channelId,
-            messageId: message.id
-        }).catch(async err => {
-            message.delete().catch(() => null);
-            throw err;
-        });
-
-        this.createGiveawayTimeout(giveaway.id, endsAt);
-        this.emit('giveawayCreate', giveaway);
-
-        return message;
-    }
-
-    /**
-     * Ends a giveaway
-     * @param giveawayId The giveaway id
-     * @param fetchWinnerEntries Fetch winner entries
-     * @returns Returns the giveaway winners if fetchWinnerEntries is enabled
-     */
-    public async endGiveaway(giveawayId: string, fetchWinnerEntries: boolean = true): Promise<IGiveawayEntry[]> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
-
-        this.deleteGiveawayTimeout(giveawayId);
-
-        const giveaway = await this.databaseAdapter.fetchGiveaway(giveawayId);
-        const entries = await Promise.all((giveaway?.winnersEntryId ?? []).map(e => this.databaseAdapter.fetchGiveawayEntry(e)).filter(Boolean)) as IGiveawayEntry[];
-        if (!giveaway || giveaway.ended) return entries;
-
-        const winners = fetchWinnerEntries
-            ? await this.getRandomGiveawayEntries(giveawayId, giveaway.winnerCount)
-            : { entries: await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId } }), selected: [] };
-
-        const message = await this.getGiveawayMessage(giveaway);
-        if (!message) {
-            await this.databaseAdapter.deleteGiveaway(giveawayId);
-            throw new GiveawayError('Giveaway message not found');
-        }
-
-        const endedGiveaway = await this.databaseAdapter.updateGiveaway(giveawayId, {
-            ...giveaway,
-            ended: true,
-            endedAt: new Date(),
-            endsAt: new Date(),
-            winnersEntryId: winners.selected.map(s => s.id) ?? []
-        });
-
-        this.emit('giveawayEnd', giveaway, winners);
-
-        await message.edit(await this.createGiveawayMessageOptions({
-            ...endedGiveaway,
-            entries: winners.entries.length ?? 0
-        }));
-
-        return winners.selected;
-    }
-
-    /**
-     * Deletes giveaway
-     * @param giveawayId The giveaway id
-     * @returns Returns the deleted giveaway if there's any
-     */
-    public async deleteGiveaway(giveawayId: string): Promise<IGiveaway|undefined> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
-
-        this.deleteGiveawayTimeout(giveawayId);
-
-        const giveaway = await this.databaseAdapter.fetchGiveaway(giveawayId);
-        if (!giveaway) return;
-
-        const message = await this.getGiveawayMessage(giveaway);
-
-        await message?.delete();
-        await this.databaseAdapter.deleteGiveaway(giveawayId);
-        this.emit('giveawayDelete', giveaway);
-
-        return giveaway;
-    }
-
-    /**
-     * Creates a giveaway message options
-     * @param giveaway Giveaway data
-     * @returns The giveaway message options
-     */
-    public async createGiveawayMessageOptions(giveaway: CreateGiveawayMessageOptions): Promise<BaseMessageOptions> {
-        const allEntries: IGiveawayEntry[] = giveaway.winnersEntryId.length && giveaway.id ? await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId: giveaway.id } }) : [];
-        const allWinners: string[] = giveaway.winnersEntryId.length
-            ? giveaway.winnersEntryId.map(id => allEntries.find(e => e.id === id)?.userId).filter((e): e is string => !!e)
-            : [];
+    public async createGiveawayMessageData(options: GiveawayManagerCreateGiveawayMessageOptions): Promise<BaseMessageOptions> {
+        const allWinners: string[] = options.entries?.winnersUserId ?? [];
 
         const embed = await Promise.resolve(this.createEmbed({
-            ...giveaway,
             manager: this,
-            allEntries,
-            allWinners
+            giveaway: options.giveaway,
+            entries: options.entries
         }));
 
         return {
-            content: giveaway.ended
-                ? allWinners.length
-                    ? inlineCode('🎉') + allWinners.map((id, i) => (i == allWinners.length && allWinners.length > 1 ? 'and ' : '') + userMention(id)).join(' ') + ' won the giveaway!'
-                    : 'There is no winner for this giveaway'
-                : undefined,
+            content: options.giveaway.ended
+            ? allWinners.length
+                ? inlineCode('🎉') + allWinners.map((id, i) => userMention(id)).join(' ') + ' won the giveaway!'
+                : ' '
+            : undefined,
             embeds: [embed],
             components: [
                 {
                     type: ComponentType.ActionRow,
                     components: [
-                        new ButtonBuilder()
-                            .setCustomId(this.joinButtonCustomId)
-                            .setDisabled(giveaway.ended)
-                            .setStyle(ButtonStyle.Primary)
-                            .setEmoji(this.joinButtonEmoji)
-                            .toJSON()
+                        {
+                            type: ComponentType.Button,
+                            ...this.joinButton,
+                            style: ButtonStyle.Primary,
+                            disabled: options.giveaway.ended || options.giveaway.paused
+                        }
                     ]
                 }
             ]
         };
     }
 
-    /**
-     * Get random entries from a giveaway
-     * @param giveawayId The giveaway id
-     * @param winnerCount Count of selected entries
-     * @returns Returns the selected winners and entries
-     */
-    public async getRandomGiveawayEntries(giveawayId: string, winnerCount: number = 1): Promise<{ entries: IGiveawayEntry[]; selected: IGiveawayEntry[]; }> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
+    public async selectGiveawayEntries(giveawayId: string, options?: GiveawayManagerSelectGiveawayEntriesOptions): Promise<GiveawayManagerEntriesData> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
 
-        const entries = await this.databaseAdapter.fetchGiveawayEntries({ filter: { giveawayId } });
-        const selected: IGiveawayEntry[] = [];
+        const giveaway = (await this.database.fetchGiveaways({ filter: { id: giveawayId } }))[0];
+        if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
 
-        if (entries.length) {
-            winnerCount = winnerCount > entries.length ? entries.length : winnerCount;
+        let winnerCount = options?.winnerCount ?? giveaway.winnerCount;
 
-            for (let i=0; i < winnerCount; i++) {
-                const entry = getRandomKey(entries.filter(e => !selected.some(s => s.id === e.id)));
-                if (entry) selected.push(entry);
-            }
+        const allEntries = await this.database.fetchGiveawayEntries({ filter: { giveawayId } });
+        const riggedUsersId = giveaway.riggedUsersId ?? [];
+        const filteredEntries = allEntries.filter(entry => !riggedUsersId.includes(entry.userId) && !options?.ignoredUsersId?.includes(entry.userId));
+
+        let winnersUserId: string[] = [];
+
+        if (options?.rigged !== false) winnersUserId.push(...riggedUsersId);
+
+        if (winnersUserId.length < winnerCount || options?.countRiggedUsers === false) {
+            const selected = await Promise.resolve(this.selectWinnerEntries(filteredEntries, winnerCount - winnersUserId.length));
+            winnersUserId.push(...selected.map(entry => entry.userId));
         }
 
-        return { entries, selected };
+        const selectedEntries = filteredEntries.filter(entry => winnersUserId.includes(entry.userId));
+
+        return {
+            allEntries,
+            riggedUsersId,
+            selectedEntries,
+            winnersUserId: this.sortSnowflakeToNewest(winnersUserId)
+        };
     }
 
-    /**
-     * Get message of a giveaway
-     * @param giveaway The giveaway data
-     * @returns The giveaway message if there's any
-     */
-    public async getGiveawayMessage(giveaway: Pick<IGiveaway, 'guildId'|'channelId'|'messageId'>): Promise<Message|undefined> {
-        const guild = await this.client.guilds.fetch(giveaway.guildId).catch(() => null);
-        if (!guild) return;
+    public async fetchGiveawayEntries(giveawayId: string): Promise<GiveawayManagerEntriesData> {
+        const giveaway = (await this.database.fetchGiveaways({ filter: { id: giveawayId } }))[0];
+        if (!giveaway) throw new GiveawayManagerError('Giveaway not found');
 
-        const channel = await guild.channels.fetch(giveaway.channelId).catch(() => null);
-        if (!channel || !channel.isTextBased()) return;
+        const allEntries = await this.database.fetchGiveawayEntries({ filter: { giveawayId } });
+        const selectedEntries = allEntries.filter(e => giveaway.winnersEntryId.includes(e.id));
 
-        const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
-        if (!message) return;
+        let winnersUserId = selectedEntries.map(e => e.userId);
+        if (giveaway.riggedUsersId) winnersUserId.push(...giveaway.riggedUsersId);
 
-        return message;
+        return {
+            allEntries,
+            riggedUsersId: giveaway.riggedUsersId ?? [],
+            selectedEntries,
+            winnersUserId: this.sortSnowflakeToNewest(winnersUserId)
+        };
     }
 
-    /**
-     * Clean deleted giveaways from database
-     * @param giveaways Giveaways to clean
-     * @returns Returns the deleted giveaways
-     */
-    public async clean(giveaways?: IGiveaway[]): Promise<IGiveaway[]> {
-        if (!this._ready) throw new GiveawayError('Giveaway manager is not ready');
+    public async fetchGiveawayMessage(giveaway: string|Pick<RawGiveaway, 'channelId'|'messageId'>): Promise<Message<true>> {
+        giveaway = typeof giveaway === 'string' ? (await this.database.fetchGiveaways({ filter: { id: giveaway } }))[0] : giveaway;
 
-        giveaways ??= await this.databaseAdapter.fetchGiveaways();
+        const channel = await this.client.channels.fetch(giveaway.channelId) as GuildTextBasedChannel;
 
-        const cleaned: IGiveaway[] = [];
+        return channel.messages.fetch(giveaway.messageId);
+    }
+
+    public async clean(giveaways?: RawGiveaway[]): Promise<void> {
+        if (!this.ready) throw new GiveawayManagerError('Giveaway manager is not ready');
+
+        giveaways ??= await this.database.fetchGiveaways({});
 
         for (const giveaway of giveaways) {
-            const message = await this.getGiveawayMessage(giveaway);
-            if (!message) {
-                await this.databaseAdapter.deleteGiveaway(giveaway.id);
-                cleaned.push(giveaway);
-            }
-        }
+            const message = await this.fetchGiveawayMessage(giveaway);
+            if (message) continue;
 
-        return cleaned;
-    }
-
-    /**
-     * Starts the giveaway manager
-     */
-    public async start(): Promise<void> {
-        if (!this.client.isReady()) throw new GiveawayError('Discord.js client is not yet ready or logged in');
-
-        await this.databaseAdapter.start(this);
-        this.databaseAdapter.on('error', this._err);
-
-        this.client.on('guildDelete', this._guildDelete);
-        this.client.on('channelDelete', this._channelDelete);
-        this.client.on('messageDelete', this._messageDelete);
-        this.client.on('messageDeleteBulk', this._messageDeleteBulk);
-        this.client.on('interactionCreate', this._interactionCreate);
-
-        this._ready = true;
-
-        const giveaways = await this.databaseAdapter.fetchGiveaways({ filter: { ended: false } });
-
-        for (const giveaway of giveaways) {
-            await this.createGiveawayTimeout(giveaway.id, giveaway.endsAt).catch(err => this.emit(err));
+            await this.deleteGiveaway(giveaway.id);
         }
     }
 
-    /**
-     * Destroy the giveaway manager
-     */
-    public destroy(): void {
-        this._ready = false;
+    protected async createGiveawayTimeout(giveawayId: string, endsAt: Date|number): Promise<void> {
+        endsAt = typeof endsAt === 'number' ? new Date(Date.now() + endsAt) : endsAt;
 
-        this.databaseAdapter.removeListener('error', this._err);
-
-        this.client.removeListener('guildDelete', this._guildDelete);
-        this.client.removeListener('channelDelete', this._channelDelete);
-        this.client.removeListener('messageDelete', this._messageDelete);
-        this.client.removeListener('messageDeleteBulk', this._messageDeleteBulk);
-        this.client.removeListener('interactionCreate', this._interactionCreate);
-
-        for (const [id, timeout] of this.giveawayTimouts) {
-            clearTimeout(timeout.timeout);
-            this.giveawayTimouts.delete(id);
-        }
-    }
-
-    protected createDataId(): string {
-        return randomBytes(10).toString('hex');
-    }
-
-    protected async createGiveawayTimeout(giveawayId: string, endsAt: Date): Promise<void> {
         if (endsAt.getTime() <= Date.now()) {
             this.endGiveaway(giveawayId);
             return;
         }
 
-        const timer = endsAt.getTime() - Date.now();
-        const timeout = setTimeout(() => this.endGiveaway(giveawayId).catch(err => this.emit('error', err)), timer).unref();
+        let duration: number = endsAt.getTime() - Date.now();
+        let timeout: NodeJS.Timeout;
 
-        this.giveawayTimouts.set(giveawayId, { giveawayId, timeout });
+        if (duration > this.maxTimeoutMs) {
+            timeout = setTimeout(() => this.createGiveawayTimeout(giveawayId, duration - this.maxTimeoutMs), this.maxTimeoutMs).unref();
+        } else {
+            timeout = setTimeout(() => this.endGiveaway(giveawayId).catch(err => this.emit('error', err)), duration).unref();
+        }
+
+        this.giveawayTimeouts.set(giveawayId, { giveawayId, timeout });
     }
 
     protected deleteGiveawayTimeout(giveawayId: string): void {
-        const timeout = this.giveawayTimouts.get(giveawayId);
+        const timeout = this.giveawayTimeouts.get(giveawayId);
         if (timeout) {
             clearTimeout(timeout.timeout);
-            this.giveawayTimouts.delete(giveawayId);
-        }
-    }
-
-    private async _guildDelete(guild: Guild): Promise<void> {
-        try {
-            const giveaways = await this.databaseAdapter.deleteGiveaway({ guildId: guild.id });
-
-            for (const giveaway of giveaways) {
-                await this.endGiveaway(giveaway.id);
-            }
-        } catch(err) {
-            this.emit('error', err);
-        }
-    }
-
-    private async _channelDelete(channel: Channel): Promise<void> {
-        try {
-            const giveaways = await this.databaseAdapter.deleteGiveaway({ channelId: channel.id });
-
-            for (const giveaway of giveaways) {
-                await this.endGiveaway(giveaway.id);
-            }
-        } catch(err) {
-            this.emit('error', err);
-        }
-    }
-
-    private async _messageDelete(message: Message|PartialMessage): Promise<void> {
-        try {
-            const giveaways = await this.databaseAdapter.deleteGiveaway({ messageId: message.id });
-
-            for (const giveaway of giveaways) {
-                await this.endGiveaway(giveaway.id);
-            }
-        } catch(err) {
-            this.emit('error', err);
-        }
-    }
-
-    private async _messageDeleteBulk(messages: Collection<string, Message|PartialMessage>): Promise<void> {
-        for (const message of messages.values()) {
-            await this._messageDelete(message);
-        }
-    }
-
-    private async _interactionCreate(interaction: Interaction): Promise<void> {
-        if (!interaction.isButton() || interaction.customId !== this.joinButtonCustomId) return;
-
-        const deffered = interaction.replied || interaction.deferred || await interaction.deferReply({ ephemeral: true }).catch(err => this.emit('error', err));
-        if (!deffered) return;
-
-        try {
-            const allowed = await Promise.resolve(this.onBeforeHandleInteraction(interaction));
-            if (allowed === false) return;
-
-            const message = interaction.message;
-            const giveaways = await this.databaseAdapter.fetchGiveaways({ filter: { messageId: message.id } });
-            const giveaway = giveaways[0] as IGiveaway|undefined;
-
-            if (!giveaway) {
-                await interaction.editReply(`${inlineCode('❌')} Unable to find giveaway from this message`);
-                return;
-            }
-
-            const entry = await this.toggleGiveawayEntry(giveaway.id, interaction.user.id).catch(err => { this.emit('error', err); });
-            if (entry === undefined) {
-                await interaction.editReply(`${inlineCode('❌')} Unable to add/remove entry`);
-                return;
-            }
-
-            if (entry) {
-                await interaction.editReply(`${inlineCode('🎉')} Successfully added new entry!`);
-            } else {
-                await interaction.editReply(`${inlineCode('🎉')} Successfully removed current entry!`);
-            }
-        } catch (err) {
-            this.emit('error', err);
+            this.giveawayTimeouts.delete(giveawayId);
         }
     }
 
@@ -473,28 +461,15 @@ export class GiveawayManager<A extends BaseDatabaseAdapter = BaseDatabaseAdapter
         this.emit('error', err);
     }
 
-    public static defaultCreateEmbed<A extends BaseDatabaseAdapter = BaseDatabaseAdapter>(giveaway: createGiveawayEmbedOptions<A>): EmbedBuilder {
-        const embed = new EmbedBuilder();
+    private sortSnowflakeToNewest(snowflakes: string[]): string[] {
+        const record: Collection<string, Date> = new Collection();
 
-        embed.setTitle(giveaway.name);
-        embed.setAuthor({ name: '🎉 Giveaway' });
-        embed.setColor(giveaway.ended ? 'DarkButNotBlack' : 'Blue');
-        embed.addFields({ name: `${inlineCode('⏲️')} End${giveaway.ended ? 'ed' : 's'}`, value: time(giveaway.endsAt, 'R') + (!giveaway.ended ? ` (${time(giveaway.endsAt)})` : '') });
-        embed.addFields({ name: `${inlineCode('👥')} Entries`, value: `${giveaway.entries ? inlineCode(giveaway.entries.toLocaleString('en-US')) : '**No entries**'}` });
-        embed.setFooter({ text: giveaway.ended ? 'Ended' : 'Active' });
-        embed.setTimestamp(giveaway?.endedAt ?? giveaway.createdAt);
-
-        if (giveaway.authorId) embed.addFields({ name: `${inlineCode('👤')} Hosted by`, value: `${userMention(giveaway.authorId)}` });
-
-        if (!giveaway.ended) {
-            if (giveaway.winnerCount > 1) embed.addFields({ name: `${inlineCode('🎁')} Winners`, value: `${giveaway.winnerCount.toLocaleString('en-US')}` });
-        } else {
-            embed.addFields({
-                name: (inlineCode('🏆') + ' Winner') + (giveaway.allWinners.length > 1 ? 's' : ''),
-                value: !giveaway.allWinners.length ? inlineCode('none') : giveaway.allWinners.map(id => `${userMention(id)} ${inlineCode(id)}`).join('\n')
-            });
+        for (const snowflake of snowflakes) {
+            const bigint = BigInt(snowflake) >> 22n;
+            const date = new Date(Number(bigint) + 1420070400000);
+            record.set(snowflake, date);
         }
 
-        return embed;
+        return Array.from(record.sort((a, b) => b.getTime() - a.getTime()).keys());
     }
 }
