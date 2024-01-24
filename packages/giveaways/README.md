@@ -13,7 +13,7 @@ npm i @falloutstudios/djs-giveaways discord.js
 
 ## Available Database Adapter
 
-- [`JSONDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JSONDatapaseAdapter.html)
+- [`JsonDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JsonDatapaseAdapter.html)
 - [`MongodbDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.MongodbDatabaseAdapter.html)
 - [`Sqlite3DatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.Sqlite3DatabaseAdapter.html)
 
