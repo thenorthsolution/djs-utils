@@ -1,4 +1,4 @@
-export * from './classes/adapters/JSONDatabaseAdapter';
+export * from './classes/adapters/JsonDatabaseAdapter';
 export * from './classes/adapters/MongodbDatabaseAdapter';
 export * from './classes/adapters/Sqlite3DatabaseAdapter';
 
