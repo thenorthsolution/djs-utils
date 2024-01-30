@@ -25,7 +25,7 @@ export interface GiveawayManagerOptions<Database extends BaseGiveawayDatabaseAda
     selectWinnerEntries?: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]>;
 }
 
-export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends TypedEmitter {
+export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends TypedEmitter<GiveawayManagerEvents> {
     public static readonly joinButton: Omit<InteractionButtonComponentData, 'disabled'|'type'> = {
         emoji: '🎉',
         customId: '@falloutstudios/djs-giveaways',
