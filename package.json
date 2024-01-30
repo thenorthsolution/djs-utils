@@ -3,7 +3,7 @@
   "private": true,
   "description": "A monorepo of discord.js utility packages",
   "scripts": {
-    "clean": "npx rimraf ./packages/*/bin ./packages/*/dist",
+    "clean": "npx rimraf -g ./packages/*/bin ./packages/*/dist",
     "build": "npm run clean && npx lerna run build",
     "docs": "npx typedoc",
     "test": "npx reciple ./test --env \".env\""
