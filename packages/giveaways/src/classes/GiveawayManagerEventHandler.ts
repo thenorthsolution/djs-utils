@@ -1,4 +1,4 @@
-import { Channel, Collection, Guild, Interaction, Message, PartialMessage, inlineCode } from 'discord.js';
+import { Channel, Guild, Interaction, Message, PartialMessage, ReadonlyCollection, inlineCode } from 'discord.js';
 import { GiveawayManager } from './GiveawayManager';
 
 export class GiveawayManagerEventHandler {
@@ -37,7 +37,7 @@ export class GiveawayManagerEventHandler {
         await this.manager.deleteGiveaway(giveaway.id);
     }
 
-    async messageDeleteBulk(messages: Collection<string, Message|PartialMessage>) {
+    async messageDeleteBulk(messages: ReadonlyCollection<string, Message|PartialMessage>) {
         if (!messages.first()?.inGuild()) return;
 
         const giveaways = (await Promise.all(messages.map(async message => (await (this.manager.database.fetchGiveaways({ filter: { messageId: message.id } })))[0]))).filter(Boolean);
