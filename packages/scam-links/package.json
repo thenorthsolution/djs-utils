@@ -1,13 +1,14 @@
 {
-  "name": "@falloutstudios/djs-scam-links",
+  "name": "@thenorthsolution/djs-scam-links",
+  "description": "Scam links utility made for Discord.js",
   "license": "GPL-3.0",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "main": "./dist/index.js",
   "module": "./dist/esm.mjs",
   "types": "./dist/index.d.ts",
-  "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_scam_links.html",
+  "homepage": "https://thenorthsolution.github.io/djs-utls/modules/_thenorthsolution_djs_scam_links.html",
   "repository": {
-    "url": "https://github.com/FalloutStudios/djs.git",
+    "url": "https://github.com/thenorthsolution/djs-utils.git",
     "directory": "packages/scam-links",
     "type": "git"
   },
@@ -18,6 +19,10 @@
       "require": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "npx tsc"
   },
@@ -27,9 +32,5 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "files": [
-    "dist",
-    "LICENSE"
-  ]
+  }
 }

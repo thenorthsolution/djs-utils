@@ -1,15 +1,14 @@
 {
-  "name": "@falloutstudios/djs-pagination",
+  "name": "@thenorthsolution/djs-pagination",
   "description": "Discord.js v14 button and reaction pagination",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "module": "./dist/esm.mjs",
-  "type": "commonjs",
   "license": "GPL-3.0",
-  "version": "2.0.5",
-  "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_pagination.html",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/esm.mjs",
+  "types": "./dist/index.d.ts",
+  "homepage": "https://thenorthsolution.github.io/djs-utils/modules/_thenorthsolution_djs_pagination.html",
   "repository": {
-    "url": "https://github.com/FalloutStudios/djs.git",
+    "url": "https://github.com/thenorthsolution/djs-utils.git",
     "directory": "packages/pagination",
     "type": "git"
   },
@@ -20,19 +19,13 @@
       "require": "./dist/index.js"
     }
   },
-  "scripts": {
-    "build": "npx tsc"
-  },
-  "peerDependencies": {
-    "discord.js": "^14.14.1"
-  },
   "files": [
     "dist",
     "LICENSE",
     "README.md"
   ],
-  "publishConfig": {
-    "access": "public"
+  "scripts": {
+    "build": "npx tsc"
   },
   "keywords": [
     "djs",
@@ -43,5 +36,11 @@
   ],
   "dependencies": {
     "fallout-utility": "^2.8.0"
+  },
+  "peerDependencies": {
+    "discord.js": "^14.14.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,13 +1,14 @@
 {
-  "name": "@falloutstudios/djs-giveaways",
+  "name": "@thenorthsolution/djs-giveaways",
+  "description": "Discord.js v14 Giveaways",
   "license": "GPL-3.0",
-  "version": "2.0.2",
+  "version": "1.0.0",
   "main": "./dist/index.js",
   "module": "./dist/esm.mjs",
   "types": "./dist/index.d.ts",
-  "homepage": "https://falloutstudios.github.io/djs/modules/_falloutstudios_djs_giveaways.html",
+  "homepage": "https://thenorthsolution.github.io/djs-utils/modules/_thenorthsolution_djs_giveaways.html",
   "repository": {
-    "url": "https://github.com/FalloutStudios/djs.git",
+    "url": "https://github.com/thenorthsolution/djs-utils.git",
     "directory": "packages/giveaways",
     "type": "git"
   },
@@ -18,16 +19,13 @@
       "require": "./dist/index.js"
     }
   },
-  "scripts": {
-    "build": "npx tsc"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "dist",
     "LICENSE"
   ],
+  "scripts": {
+    "build": "npx tsc"
+  },
   "keywords": [
     "giveaways",
     "discord.js"
@@ -45,5 +43,8 @@
   "optionalDependencies": {
     "better-sqlite3": "^9.3.0",
     "mongoose": "^8.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
