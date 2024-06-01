@@ -4,7 +4,7 @@
   "license": "GPL-3.0",
   "version": "1.0.0",
   "main": "./dist/index.js",
-  "module": "./dist/esm.mjs",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "homepage": "https://thenorthsolution.github.io/djs-utls/modules/_thenorthsolution_djs_scam_links.html",
   "repository": {
@@ -14,9 +14,14 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/esm.mjs",
-      "require": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
     }
   },
   "files": [
@@ -24,7 +29,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npx tsc"
+    "build": "tsup"
   },
   "dependencies": {
     "@discordjs/collection": "^2.0.0",
