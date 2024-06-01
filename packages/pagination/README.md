@@ -1,4 +1,4 @@
-# Djs Pagination
+# @thenorthsolution/djs-pagination
 ![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@thenorthsolution/djs-pagination?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/FalloutStudios/djs-pagination?style=flat-square)
 ![npm (scoped)](https://img.shields.io/npm/v/@thenorthsolution/djs-pagination?label=Latest%20Version&style=flat-square)
@@ -10,8 +10,6 @@ A simple button and reaction pagination library for Discord.js v14
 ```bash
 npm i @thenorthsolution/djs-pagination discord.js
 ```
-
-> See also [Oceanic Pagination](https://www.npmjs.com/package/oceanic-pagination)
 
 ### Features
 - Object Oriented
@@ -32,8 +30,8 @@ npm i @thenorthsolution/djs-pagination discord.js
 ### Button Pagination
 
 ```js
-const { ButtonPaginationBuilder } = require('@thenorthsolution/djs-pagination');
-const { ButtonBuilder, Client, EmbedBuilder } = require('discord.js');
+import { ButtonPaginationBuilder } from '@thenorthsolution/djs-pagination';
+import { ButtonBuilder, Client, EmbedBuilder } from 'discord.js';
 
 const bot = new Client({
     intents: ['Guilds', 'MessageContent']
@@ -72,8 +70,8 @@ bot.login('TOKEN');
 > ⚠️ You cannot use reaction pagination with ephemeral messages
 
 ```js
-const { ReactionPaginationBuilder } = require('@thenorthsolution/djs-pagination');
-const { Client, EmbedBuilder } = require('discord.js');
+import { ReactionPaginationBuilder } from '@thenorthsolution/djs-pagination';
+import { Client, EmbedBuilder } from 'discord.js';
 
 const bot = new Client({
     intents: ['Guilds', 'MessageContent', 'GuildMessageReactions']

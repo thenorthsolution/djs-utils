@@ -5,8 +5,8 @@ Check if string for contains scam domains.
 ## Example
 
 ```js
-const { Client } = require('discord.js');
-const { DiscordScamLinks } = require('@thenorthsolution/djs-scam-links');
+import { Client } from 'discord.js';
+import { DiscordScamLinks } from '@thenorthsolution/djs-scam-links';
 
 const client = new Client({
     intents: [

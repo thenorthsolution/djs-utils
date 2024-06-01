@@ -1,4 +1,4 @@
-# Djs Giveaways
+# @thenorthsolution/djs-giveaways
 ![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@thenorthsolution/djs-giveaways?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/FalloutStudios/djs?style=flat-square)
 ![npm (scoped)](https://img.shields.io/npm/v/@thenorthsolution/djs-giveaways?label=Latest%20Version&style=flat-square)
@@ -13,14 +13,13 @@ npm i @thenorthsolution/djs-giveaways discord.js
 
 ## Available Database Adapter
 
-- [`JsonDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.JsonDatapaseAdapter.html)
-- [`MongodbDatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.MongodbDatabaseAdapter.html)
-- [`Sqlite3DatabaseAdapter`](https://falloutstudios.github.io/djs/classes/_falloutstudios_djs_giveaways.Sqlite3DatabaseAdapter.html)
+- [`JsonDatabaseAdapter`](https://thenorthsolution.github.io/djs-utils/classes/_thenorthsolution_djs_giveaways.JsonDatapaseAdapter.html)
+- [`MongodbDatabaseAdapter`](https://thenorthsolution.github.io/djs-utils/classes/_thenorthsolution_djs_giveaways.MongodbDatabaseAdapter.html)
+- [`Sqlite3DatabaseAdapter`](https://thenorthsolution.github.io/djs-utils/classes/_thenorthsolution_djs_giveaways.Sqlite3DatabaseAdapter.html)
 
 ## Usage
 
 ```js
-// @ts-check
 import { GiveawayManager, MongodbDatabaseAdapter } from '@thenorthsolution/djs-giveaways';
 import { Client, SlashCommandBuilder, userMention } from 'discord.js';
 import ms from 'ms';
