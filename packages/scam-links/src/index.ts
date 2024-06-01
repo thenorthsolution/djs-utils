@@ -1,2 +1,2 @@
-export * from './djs-scam-links/classes/DiscordScamLinks';
-export * from './djs-scam-links/classes/UrlJsonContent';
+export * from './classes/DiscordScamLinks';
+export * from './classes/UrlJsonContent';
