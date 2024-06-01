@@ -1,4 +1,4 @@
-# @falloutstudios/djs-scam-links
+# @thenorthsolution/djs-scam-links
 
 Check if string for contains scam domains.
 
@@ -6,7 +6,7 @@ Check if string for contains scam domains.
 
 ```js
 const { Client } = require('discord.js');
-const { DiscordScamLinks } = require('@falloutstudios/djs-scam-links');
+const { DiscordScamLinks } = require('@thenorthsolution/djs-scam-links');
 
 const client = new Client({
     intents: [
@@ -36,7 +36,7 @@ By default this package uses [Discord-AntiScam/scam-links](https://github.com/Di
 ## Add custom domains
 
 ```js
-const { DiscordScamLinks } = require('@falloutstudios/djs-scam-links');
+const { DiscordScamLinks } = require('@thenorthsolution/djs-scam-links');
 
 const scamLinks = new DiscordScamLinks();
 

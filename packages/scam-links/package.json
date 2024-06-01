@@ -32,7 +32,7 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@discordjs/collection": "^2.0.0",
+    "@discordjs/collection": "^2.1.0",
     "fallout-utility": "^2.8.0"
   },
   "publishConfig": {

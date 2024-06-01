@@ -1,14 +1,14 @@
 # Djs Giveaways
-![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@falloutstudios/djs-giveaways?style=flat-square)
+![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@thenorthsolution/djs-giveaways?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/FalloutStudios/djs?style=flat-square)
-![npm (scoped)](https://img.shields.io/npm/v/@falloutstudios/djs-giveaways?label=Latest%20Version&style=flat-square)
+![npm (scoped)](https://img.shields.io/npm/v/@thenorthsolution/djs-giveaways?label=Latest%20Version&style=flat-square)
 
 A giveaway library for discord.js
 
 ## Installation
 
 ```bash
-npm i @falloutstudios/djs-giveaways discord.js
+npm i @thenorthsolution/djs-giveaways discord.js
 ```
 
 ## Available Database Adapter
@@ -21,7 +21,7 @@ npm i @falloutstudios/djs-giveaways discord.js
 
 ```js
 // @ts-check
-import { GiveawayManager, MongodbDatabaseAdapter } from '@falloutstudios/djs-giveaways';
+import { GiveawayManager, MongodbDatabaseAdapter } from '@thenorthsolution/djs-giveaways';
 import { Client, SlashCommandBuilder, userMention } from 'discord.js';
 import ms from 'ms';
 

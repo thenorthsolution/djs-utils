@@ -1,14 +1,14 @@
 # Djs Pagination
-![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@falloutstudios/djs-pagination?style=flat-square)
+![npm bundle size (scoped)](https://img.shields.io/bundlephobia/min/@thenorthsolution/djs-pagination?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/FalloutStudios/djs-pagination?style=flat-square)
-![npm (scoped)](https://img.shields.io/npm/v/@falloutstudios/djs-pagination?label=Latest%20Version&style=flat-square)
+![npm (scoped)](https://img.shields.io/npm/v/@thenorthsolution/djs-pagination?label=Latest%20Version&style=flat-square)
 
 A simple button and reaction pagination library for Discord.js v14
 
 ## Installation
 
 ```bash
-npm i @falloutstudios/djs-pagination discord.js
+npm i @thenorthsolution/djs-pagination discord.js
 ```
 
 > See also [Oceanic Pagination](https://www.npmjs.com/package/oceanic-pagination)
@@ -32,7 +32,7 @@ npm i @falloutstudios/djs-pagination discord.js
 ### Button Pagination
 
 ```js
-const { ButtonPaginationBuilder } = require('@falloutstudios/djs-pagination');
+const { ButtonPaginationBuilder } = require('@thenorthsolution/djs-pagination');
 const { ButtonBuilder, Client, EmbedBuilder } = require('discord.js');
 
 const bot = new Client({
@@ -72,7 +72,7 @@ bot.login('TOKEN');
 > ⚠️ You cannot use reaction pagination with ephemeral messages
 
 ```js
-const { ReactionPaginationBuilder } = require('@falloutstudios/djs-pagination');
+const { ReactionPaginationBuilder } = require('@thenorthsolution/djs-pagination');
 const { Client, EmbedBuilder } = require('discord.js');
 
 const bot = new Client({

@@ -28,7 +28,7 @@ export interface GiveawayManagerOptions<Database extends BaseGiveawayDatabaseAda
 export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends TypedEmitter<GiveawayManagerEvents> {
     public static readonly joinButton: Omit<InteractionButtonComponentData, 'disabled'|'type'> = {
         emoji: '🎉',
-        customId: '@falloutstudios/djs-giveaways',
+        customId: '@thenorthsolution/djs-giveaways',
         style: ButtonStyle.Primary
     };
 
