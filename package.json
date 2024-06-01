@@ -18,6 +18,7 @@
     "typescript": "^5.4.5"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "test"
   ]
 }
