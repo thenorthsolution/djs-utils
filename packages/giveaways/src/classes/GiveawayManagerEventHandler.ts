@@ -77,7 +77,7 @@ export class GiveawayManagerEventHandler {
                 await interaction.editReply(`${inlineCode('🎉')} Successfully removed current entry!`);
             }
         } catch (err) {
-            this.manager.emit('error', err);
+            this.manager.emit('error', err as Error);
         }
     }
 }

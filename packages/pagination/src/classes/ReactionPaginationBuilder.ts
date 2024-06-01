@@ -143,7 +143,7 @@ export class ReactionPaginationBuilder<Sent extends boolean = boolean> extends B
                     break;
             }
 
-            this.emit('reactionAdd', reaction, controller);
+            this.emit('controllerReactionAdd', reaction, controller);
             this.collector?.resetTimer();
 
             if (this.removeReactionOnReact) await reaction.users.remove(user).catch(err => this.emit('error', err));

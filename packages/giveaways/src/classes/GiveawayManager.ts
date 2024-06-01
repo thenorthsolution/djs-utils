@@ -2,14 +2,15 @@ import { GiveawayManagerButtonOptions, GiveawayManagerCreateGiveawayEmbedOptions
 import { APIEmbed, BaseMessageOptions, ButtonInteraction, ButtonStyle, Client, Collection, ComponentType, EmbedBuilder, GuildTextBasedChannel, InteractionButtonComponentData, Message, inlineCode, time, userMention } from 'discord.js';
 import { GiveawayManagerEventHandler } from './GiveawayManagerEventHandler';
 import { BaseGiveawayDatabaseAdapter } from './BaseGiveawayDatabaseAdapter';
-import { Awaitable, JSONEncodable, TypedEmitter } from 'fallout-utility';
+import { Awaitable, JSONEncodable } from 'fallout-utility';
 import { GiveawayManagerError } from './GiveawayManagerError';
+import { StrictTypedEmitter } from 'fallout-utility/StrictTypedEmitter';
 
 export interface GiveawayManagerEvents {
     error: [error: Error];
     giveawayCreate: [giveaway: RawGiveaway];
     giveawayEnd: [giveaway: RawGiveaway, winnerData: GiveawayManagerEntriesData];
-    giveawayDelete: [giveaway: RawGiveaway, entries: RawGiveawayEntry[]];
+    giveawayDelete: [giveaway: RawGiveaway];
     giveawayEntryAdd: [entry: RawGiveawayEntry];
     giveawayEntryDelete: [entry: RawGiveawayEntry];
 }
@@ -25,7 +26,7 @@ export interface GiveawayManagerOptions<Database extends BaseGiveawayDatabaseAda
     selectWinnerEntries?: (entries: RawGiveawayEntry[], needed: number) => Awaitable<RawGiveawayEntry[]>;
 }
 
-export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends TypedEmitter<GiveawayManagerEvents> {
+export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = BaseGiveawayDatabaseAdapter> extends StrictTypedEmitter<GiveawayManagerEvents> {
     public static readonly joinButton: Omit<InteractionButtonComponentData, 'disabled'|'type'> = {
         emoji: '🎉',
         customId: '@thenorthsolution/djs-giveaways',
@@ -297,7 +298,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
             await this.database.deleteGiveawayEntries({ filter: { id: entry.id } });
             entries = entries.filter(e => entry?.id !== e.id);
 
-            this.emit('giveawayEntryDelete', entry, giveawayId);
+            this.emit('giveawayEntryDelete', entry);
             entry = null;
         } else {
             entry = await this.database.createGiveawayEntry({
@@ -308,7 +309,7 @@ export class GiveawayManager<Database extends BaseGiveawayDatabaseAdapter = Base
             });
 
             entries.push(entry);
-            this.emit('giveawayEntryAdd', entry, giveawayId);
+            this.emit('giveawayEntryAdd', entry);
         }
 
         if (updateMessage) {

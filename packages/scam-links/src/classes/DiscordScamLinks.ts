@@ -1,6 +1,7 @@
-import { Awaitable, If, RestOrArray, TypedEmitter, normalizeArray, replaceAll } from 'fallout-utility';
+import { Awaitable, If, RestOrArray, normalizeArray, replaceAll } from 'fallout-utility';
 import { UrlJsonContent, UrlJsonContentOptions } from './UrlJsonContent';
 import { Collection } from '@discordjs/collection';
+import { StrictTypedEmitter } from 'fallout-utility/StrictTypedEmitter';
 
 export interface DiscordScamLinksOptions {
     /**
@@ -24,7 +25,7 @@ export interface DiscordScamLinksEvents {
     cacheAdd: [cached: UrlJsonContent<any>];
 }
 
-export class DiscordScamLinks<Ready extends boolean = boolean> extends TypedEmitter<DiscordScamLinksEvents> {
+export class DiscordScamLinks<Ready extends boolean = boolean> extends StrictTypedEmitter<DiscordScamLinksEvents> {
     private _options?: Partial<DiscordScamLinksOptions>;
     private _ready: boolean = false;
 

@@ -159,15 +159,15 @@ export class ButtonPaginationBuilder<Sent extends boolean = boolean> extends Bas
                 case ButtonPaginationOnEnd.RemoveComponents:
                     this._componentsVisibility = 'RemoveAll';
 
-                    await this.setCurrentPageIndex(undefined, true).catch(err => this.emit('error', err));
+                    await this.setCurrentPageIndex(undefined, true).catch(() => null);
                     break;
                 case ButtonPaginationOnEnd.DisableComponents:
                     this._componentsVisibility = 'DisableAll';
 
-                    await this.setCurrentPageIndex(undefined, true).catch(err => this.emit('error', err));
+                    await this.setCurrentPageIndex(undefined, true).catch(() => null);
                     break;
                 case ButtonPaginationOnEnd.DeletePagination:
-                    await this.pagination?.delete().catch(err => this.emit('error', err));
+                    await this.pagination?.delete().catch(() => null);
                     break;
                 case ButtonPaginationOnEnd.Ignore: break;
             }

@@ -2,7 +2,8 @@ import { ActionRowBuilder, If, JSONEncodable, Message, MessageActionRowComponent
 import { DynamicPageFunction, PageData, PageResolvable, PaginationComponentsOrder, resolvePage, resolveStaticPages } from '../types/page';
 import { ActionRowResolvable, disableComponents } from '../types/actionRow';
 import { PaginationActionRows, SendAs, getEnumValue } from '../types/enums';
-import { TypedEmitter, isJSONEncodable } from 'fallout-utility';
+import { isJSONEncodable } from 'fallout-utility';
+import { StrictTypedEmitter } from 'fallout-utility/StrictTypedEmitter';
 
 export interface BasePaginationOptions {
     pages: PageResolvable[];
@@ -23,7 +24,7 @@ export interface BasePaginationEvents<Collected> {
     error: [error: unknown];
 }
 
-export abstract class BasePaginationBuilder<Collected, Events extends BasePaginationEvents<Collected> = BasePaginationEvents<Collected>, Sent extends boolean = boolean> extends TypedEmitter<Events> implements BasePaginationOptions {
+export abstract class BasePaginationBuilder<Collected, Events extends BasePaginationEvents<Collected> = BasePaginationEvents<Collected>, Sent extends boolean = boolean> extends StrictTypedEmitter<Events> implements BasePaginationOptions {
     public pages: (PageData|DynamicPageFunction)[] = [];
     public authorDependent: boolean = true;
     public endTimer: number|null = null;
