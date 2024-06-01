@@ -2,20 +2,19 @@ name: Documentation
 on:
   push:
     branches: ['main']
-    paths: ['**/src/**', '**package.json']
-    tags: ['**']
+    paths: ['packages/**']
   workflow_dispatch:
 jobs:
   build:
     name: Build Documentation
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'FalloutStudios'
+    if: github.repository_owner == 'thenorthsolution'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
@@ -27,7 +26,7 @@ jobs:
         run: npm run docs
 
       - name: Checkout docs branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: 'out'
