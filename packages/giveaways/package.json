@@ -37,11 +37,11 @@
   ],
   "dependencies": {
     "fallout-utility": "^2.8.0",
-    "lodash": "^4.17.21"
+    "lodash.filter": "^4.6.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.10",
-    "@types/lodash": "^4.17.4",
+    "@types/lodash.filter": "^4.6.9",
     "better-sqlite3": "^11.0.0",
     "mongoose": "^8.4.1"
   },

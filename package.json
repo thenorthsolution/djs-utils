@@ -5,6 +5,7 @@
   "scripts": {
     "clean": "npx rimraf -g ./packages/*/dist",
     "build": "npm run clean && npx lerna run build",
+    "test": "npm run dev -w test",
     "docs": "npx typedoc"
   },
   "devDependencies": {
