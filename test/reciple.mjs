@@ -60,7 +60,7 @@ export const config = {
         }
     },
     modules: {
-        dirs: ['./modules'],
+        dirs: ['./modules', './modules/*'],
         exclude: [],
         filter: file => true,
         disableModuleVersionCheck: false
