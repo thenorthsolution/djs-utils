@@ -6,7 +6,7 @@
     "plugin": [
         "typedoc-material-theme"
     ],
-    "themeColor": "#cb9820",
+    "themeColor": "#CD2163",
     "cleanOutputDir": true,
     "name": "Discord.js Utilities",
     "basePath": "djs",
