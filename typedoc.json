@@ -4,13 +4,13 @@
         "./packages/*"
     ],
     "plugin": [
-        "@mxssfd/typedoc-theme"
+        "typedoc-material-theme"
     ],
+    "themeColor": "#cb9820",
     "cleanOutputDir": true,
     "name": "Discord.js Utilities",
     "basePath": "djs",
     "out": "docs",
     "json": "docs/docs.json",
-    "theme": "my-theme",
     "readme": "none",
 }
